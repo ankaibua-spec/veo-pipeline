@@ -40,8 +40,8 @@ Tool opens GUI. Login Flow account once, token cached. Set `video_output_dir` to
 cd pc
 set VEO_WATCH_DIR=C:\veo_output
 set VEO_DRIVE_FOLDER_ID=YOUR_FOLDER_ID
-set VEO_TG_BOT=8199167541:AAFun_6T7D0u-h2M5PygU0mIPOtj8OPRP5Y
-set VEO_TG_CHAT=-1003375527350
+set VEO_TG_BOT=YOUR_BOT_TOKEN
+set VEO_TG_CHAT=YOUR_CHAT_ID
 python post_processor.py
 ```
 

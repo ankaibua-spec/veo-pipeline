@@ -19,7 +19,7 @@ from datetime import datetime
 WATCH_DIR = Path(os.environ.get("VEO_WATCH_DIR", r"C:\veo_output"))
 DRIVE_FOLDER_ID = os.environ.get("VEO_DRIVE_FOLDER_ID", "")  # target Drive folder
 DRIVE_CRED = Path(os.environ.get("VEO_DRIVE_CRED", "./drive_credentials.json"))
-TG_BOT = os.environ.get("VEO_TG_BOT", "8199167541:AAFun_6T7D0u-h2M5PygU0mIPOtj8OPRP5Y")
+TG_BOT = os.environ.get("VEO_TG_BOT", "")
 TG_CHAT = os.environ.get("VEO_TG_CHAT", "-1003375527350")  # Video Veo3 channel
 PROCESSED_DB = Path("./veo_processed.json")
 TOPIC_REGEX = re.compile(r"(?:^|_)(letter[_\s-]?\w|day|number|color|month|fruit|.*)\.mp4$", re.I)
@@ -208,11 +208,17 @@ def main():
     obs = Observer()
     obs.schedule(Handler(), str(WATCH_DIR), recursive=True)
     obs.start()
+    restart_marker = Path(__file__).parent / ".restart_required"
     try:
         while True:
             time.sleep(60)
+            if restart_marker.exists():
+                print("[boot] restart marker detected, exiting for relaunch")
+                restart_marker.unlink(missing_ok=True)
+                break
     except KeyboardInterrupt:
-        obs.stop()
+        pass
+    obs.stop()
     obs.join()
 
 

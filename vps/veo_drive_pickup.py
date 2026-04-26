@@ -22,8 +22,8 @@ CRED_FILE = "/root/.veo_drive_creds.json"
 DRIVE_FOLDER_ID = os.environ.get("VEO_DRIVE_FOLDER_ID", "")
 PICKUP_DIR = Path("/opt/english-pronunciation/storage/veo_pickup")
 DB_PATH = "/opt/english-pronunciation/storage/database.db"
-TG_BOT = "8199167541:AAFun_6T7D0u-h2M5PygU0mIPOtj8OPRP5Y"
-TG_CHAT = "-1003375527350"
+TG_BOT = os.environ.get("VEO_TG_BOT", "")
+TG_CHAT = os.environ.get("VEO_TG_CHAT", "")
 LOCK = "/tmp/veo_drive_pickup.lock"
 
 PICKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -107,17 +107,19 @@ def main():
         log("VEO_DRIVE_FOLDER_ID not set; aborting")
         return
 
-    # Lock
-    if os.path.exists(LOCK):
-        try:
-            with open(LOCK) as f: pid = int(f.read().strip())
-            os.kill(pid, 0)  # check alive
-            log("another instance running; skip")
-            return
-        except (OSError, ValueError):
-            pass
-    with open(LOCK, "w") as f: f.write(str(os.getpid()))
+    # Lock via fcntl (atomic, no TOCTOU)
+    import fcntl
+    lock_fd = open(LOCK, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log("another instance running; skip")
+        lock_fd.close()
+        return
+    lock_fd.write(str(os.getpid()))
+    lock_fd.flush()
 
+    c = None
     try:
         init_db()
         files = list_drive_files()
@@ -131,15 +133,32 @@ def main():
             size = int(f.get("size", 0))
 
             row = c.execute("SELECT status FROM veo_drive_files WHERE drive_id=?", (fid,)).fetchone()
-            if row and row[0] != "new":
+            if row and row[0] not in ("new", "error"):
                 continue
 
             local = PICKUP_DIR / name
             log(f"download {name} ({size//1024//1024}MB)")
-            try:
-                download_drive(fid, local)
-            except Exception as e:
-                log(f"  failed: {e}")
+
+            # Retry up to 3x with backoff
+            ok = False
+            err_msg = ""
+            for attempt in range(3):
+                try:
+                    download_drive(fid, local)
+                    ok = True
+                    break
+                except Exception as e:
+                    err_msg = str(e)
+                    log(f"  attempt {attempt+1} failed: {e}")
+                    time.sleep(5 * (attempt + 1))
+
+            if not ok:
+                c.execute("""
+                    INSERT OR REPLACE INTO veo_drive_files
+                    (drive_id, filename, size, status)
+                    VALUES (?, ?, ?, 'error')
+                """, (fid, name, size))
+                c.commit()
                 continue
 
             topic = parse_topic(name)
@@ -159,12 +178,15 @@ def main():
                 f"Status: queued for YouTube upload"
             )
 
-        c.close()
         log(f"new={new_count}")
 
     finally:
-        try: os.unlink(LOCK)
-        except: pass
+        if c: c.close()
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
+            os.unlink(LOCK)
+        except Exception: pass
 
 
 if __name__ == "__main__":

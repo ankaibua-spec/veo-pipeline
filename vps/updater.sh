@@ -7,8 +7,8 @@
 set -e
 REPO_DIR="${VEO_REPO_DIR:-/opt/veo-pipeline}"
 LOG="/var/log/veo-updater.log"
-TG_BOT="${VEO_TG_BOT:-8199167541:AAFun_6T7D0u-h2M5PygU0mIPOtj8OPRP5Y}"
-TG_CHAT="${VEO_TG_CHAT:--1003375527350}"
+TG_BOT="${VEO_TG_BOT:-}"
+TG_CHAT="${VEO_TG_CHAT:-}"
 
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 

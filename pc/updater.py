@@ -47,20 +47,15 @@ def git_pull() -> tuple[bool, str]:
     return r.returncode == 0, (r.stdout + r.stderr)[-2000:]
 
 
-def restart_post_processor():
-    """Kill existing post_processor + relaunch."""
-    if sys.platform == "win32":
-        run("taskkill /F /IM python.exe /FI \"WINDOWTITLE eq post_processor*\"")
-    else:
-        run("pkill -f post_processor.py")
-    time.sleep(2)
-    pp = REPO_DIR / "pc" / "post_processor.py"
-    if pp.exists():
-        if sys.platform == "win32":
-            subprocess.Popen(["pythonw", str(pp)], creationflags=0x08000000)
-        else:
-            subprocess.Popen(["python3", str(pp)], start_new_session=True)
-        log("post_processor restarted")
+def write_restart_marker():
+    """Write marker file. post_processor checks marker on next iteration and self-exits.
+    External wrapper script (or Task Scheduler trigger) re-launches.
+    Avoids race when updater is invoked from inside post_processor's own thread.
+    """
+    marker = REPO_DIR / "pc" / ".restart_required"
+    marker.write_text(f"{int(time.time())}\n")
+    log(f"restart marker written: {marker}")
+    log("post_processor will exit on next idle tick; relaunch via wrapper/Task Scheduler")
 
 
 def main():
@@ -96,8 +91,8 @@ def main():
     if not ok:
         log(f"pull failed:\n{out}")
         return
-    log("pull done; restarting post_processor")
-    restart_post_processor()
+    log("pull done; signaling post_processor to restart")
+    write_restart_marker()
 
     STATE_FILE.write_text(json.dumps({
         "last_update": int(time.time()),
