@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tool runtime
+data_general/
+veo_processed.json
+*.lock
+
+# Credentials (DO NOT COMMIT)
+drive_credentials.json
+.veo_drive_creds.json
+*credentials*.json
+*secret*.json
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output
+veo_output/
+*.mp4
