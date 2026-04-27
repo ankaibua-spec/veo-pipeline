@@ -122,9 +122,10 @@ class Sidebar(QFrame):
 
 
 class TopBar(QFrame):
-    def __init__(self):
+    def __init__(self, on_bulk_login=None):
         super().__init__()
         self.setObjectName("topBar")
+        self._on_bulk_login = on_bulk_login
         self._build()
 
     def _build(self):
@@ -134,6 +135,14 @@ class TopBar(QFrame):
         self.subtitle = QLabel("Welcome"); self.subtitle.setObjectName("pageSubtitle")
         titles.addWidget(self.title); titles.addWidget(self.subtitle)
         layout.addLayout(titles); layout.addStretch()
+
+        bulk_btn = QPushButton("👥 Bulk Login")
+        bulk_btn.setObjectName("topAction")
+        bulk_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        if self._on_bulk_login:
+            bulk_btn.clicked.connect(self._on_bulk_login)
+        layout.addWidget(bulk_btn)
+
         for label in ["📁 Open Output", "🔄 Refresh", "⚙ Account"]:
             b = QPushButton(label); b.setObjectName("topAction")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -331,7 +340,7 @@ class MainWindow(QMainWindow):
         outer.addWidget(self.sidebar)
 
         right = QVBoxLayout(); right.setContentsMargins(0, 0, 0, 0); right.setSpacing(0)
-        self.topbar = TopBar(); right.addWidget(self.topbar)
+        self.topbar = TopBar(on_bulk_login=self._open_bulk_login); right.addWidget(self.topbar)
 
         self.stack = QStackedWidget(); self.stack.setObjectName("contentArea")
 
@@ -409,6 +418,11 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(idx)
         title, subtitle = self.PAGE_TITLES.get(key, (key, ""))
         self.topbar.set_page(title, subtitle)
+
+    def _open_bulk_login(self):
+        from .bulk_login import BulkLoginDialog
+        dlg = BulkLoginDialog(self)
+        dlg.exec()
 
 
 def run():
