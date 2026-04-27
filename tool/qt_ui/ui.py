@@ -10,25 +10,25 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QFileDialog, QGridLayout, 
                              QLabel, QLineEdit, QMainWindow, QPushButton, QSplitter, 
                              QTabWidget, QVBoxLayout, QWidget, QMessageBox)
 import status_panel
-from status_panel import StatusPanel
+from .status_panel import StatusPanel
 import tab_text_to_video
-from tab_text_to_video import TextToVideoTab
+from .tab_text_to_video import TextToVideoTab
 import tab_image_to_video
-from tab_image_to_video import ImageToVideoTab
+from .tab_image_to_video import ImageToVideoTab
 import tab_character_sync
-from tab_character_sync import CharacterSyncTab
+from .tab_character_sync import CharacterSyncTab
 import tab_create_image
-from tab_create_image import CreateImageTab, CreateImageFromPromptTab
+from .tab_create_image import CreateImageTab, CreateImageFromPromptTab
 import tab_idea_to_video
-from tab_idea_to_video import IdeaToVideoTab
+from .tab_idea_to_video import IdeaToVideoTab
 import popup_theme
-from popup_theme import install_messagebox_theme
+from .popup_theme import install_messagebox_theme
 import tab_settings
-from tab_settings import SettingsTab
+from .tab_settings import SettingsTab
 import tab_grok_settings
-from tab_grok_settings import GrokSettingsTab
+from .tab_grok_settings import GrokSettingsTab
 import branding_config
-from branding_config import WINDOW_TITLE
+from .branding_config import WINDOW_TITLE
 import settings_manager
 from settings_manager import BASE_DIR, get_icon_path
 import worker_run_workflow
@@ -774,7 +774,7 @@ class MainWindow(QMainWindow):
         self.tab_text = TextToVideoTab()
         self.tab_image = ImageToVideoTab()
         self.tab_char_sync = CharacterSyncTab()
-        self.tab_create_image = CreateImageTab(self._cfg, on_model_changed=self._on_create_image_model_changed)
+        self.tab_create_image = CreateImageTab(None, self._cfg, on_model_changed=self._on_create_image_model_changed)
         self.tab_idea = IdeaToVideoTab(config)
         self.tab_settings = SettingsTab(config)
         
