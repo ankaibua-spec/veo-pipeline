@@ -1,0 +1,71 @@
+name: Build VEO Pipeline Pro
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller PyQt6 playwright requests urllib3 watchdog google-api-python-client google-auth google-auth-oauthlib
+
+      - name: Build exe
+        run: |
+          pyinstaller --clean --distpath dist --workpath build/work build/veo-pipeline-pro.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VEO_Pipeline_Pro_Windows
+          path: dist/VEO_Pipeline_Pro.exe
+          retention-days: 30
+
+      - name: Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/VEO_Pipeline_Pro.exe
+          generate_release_notes: true
+
+      - name: Notify Telegram + Zalo
+        if: always()
+        env:
+          TG_BOT: ${{ secrets.VEO_TG_BOT }}
+          TG_CHAT: ${{ secrets.VEO_TG_CHAT }}
+          ZALO_BOT: ${{ secrets.VEO_ZALO_BOT }}
+          ZALO_CHAT: ${{ secrets.VEO_ZALO_CHAT }}
+        shell: pwsh
+        run: |
+          $status = if ($env:GITHUB_JOB_STATUS -eq 'success') { "✅" } else { "❌" }
+          $sha = $env:GITHUB_SHA.Substring(0,8)
+          $url = "https://github.com/${env:GITHUB_REPOSITORY}/actions/runs/${env:GITHUB_RUN_ID}"
+          $msg = "${status} <b>VEO Pipeline Pro build</b>%0Acommit ${sha}%0A${url}"
+
+          if ($env:TG_BOT -and $env:TG_CHAT) {
+            try {
+              Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TG_BOT)/sendMessage" `
+                -Method POST -ContentType "application/json" `
+                -Body (@{chat_id=$env:TG_CHAT; text=$msg; parse_mode="HTML"} | ConvertTo-Json)
+            } catch { Write-Host "TG notify failed: $_" }
+          }
+
+          if ($env:ZALO_BOT -and $env:ZALO_CHAT) {
+            try {
+              Invoke-RestMethod -Uri "https://bot-api.zaloplatforms.com/bot$($env:ZALO_BOT)/sendMessage" `
+                -Method POST -ContentType "application/json" `
+                -Body (@{chat_id=$env:ZALO_CHAT; text=$msg.Replace("<b>","").Replace("</b>","").Replace("%0A","`n")} | ConvertTo-Json)
+            } catch { Write-Host "Zalo notify failed: $_" }
+          }

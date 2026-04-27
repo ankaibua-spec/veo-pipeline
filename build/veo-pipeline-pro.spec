@@ -1,0 +1,110 @@
+# PyInstaller spec — VEO Pipeline Pro standalone build
+# Build: pyinstaller build/veo-pipeline-pro.spec
+# Output: dist/VEO_Pipeline_Pro.exe (single file, no Python required)
+
+# -*- mode: python ; coding: utf-8 -*-
+import os
+from pathlib import Path
+
+ROOT = Path(SPECPATH).parent
+TOOL_DIR = ROOT / "tool"
+
+block_cipher = None
+
+a = Analysis(
+    [str(TOOL_DIR / "launcher_pro.py")],
+    pathex=[str(TOOL_DIR)],
+    binaries=[],
+    datas=[
+        (str(TOOL_DIR / "qt_ui_modern"), "qt_ui_modern"),
+        (str(TOOL_DIR / "qt_ui"), "qt_ui"),
+    ],
+    hiddenimports=[
+        "PyQt6.QtCore",
+        "PyQt6.QtGui",
+        "PyQt6.QtWidgets",
+        # Legacy tab modules (loaded dynamically)
+        "tab_text_to_video",
+        "tab_image_to_video",
+        "tab_idea_to_video",
+        "tab_character_sync",
+        "tab_create_image",
+        "tab_grok_settings",
+        "tab_settings",
+        "status_panel",
+        "branding_config",
+        "settings_manager",
+        "popup_theme",
+        "License",
+        "chrome_process_manager",
+        "chrome",
+        # Workflows
+        "A_workflow_text_to_video",
+        "A_workflow_image_to_video",
+        "A_workflow_idea_to_video",
+        "A_workflow_generate_image",
+        "A_workflow_image_to_image",
+        "A_workflow_sync_chactacter",
+        "A_workflow_get_token",
+        "API_text_to_video",
+        "API_image_to_video",
+        "API_image_to_image",
+        "API_Create_image",
+        "API_sync_chactacter",
+        "SORA_API_UPLOAD_IMAGE",
+        # Grok
+        "grok_api_text_to_video",
+        "grok_api_image_to_video",
+        "grok_workflow_text_to_video",
+        "grok_workflow_image_to_video",
+        "grok_chrome_manager",
+        "idea_to_video",
+        "login",
+        "merge+video",
+        "style",
+        "ui",
+        "UI_main",
+        "worker_run_workflow",
+        "worker_run_workflow_grok",
+        "workflow_run_control",
+        "status_help_view",
+        # Playwright
+        "playwright",
+        "playwright.async_api",
+        "playwright.sync_api",
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name="VEO_Pipeline_Pro",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,  # no console window
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=str(ROOT / "build" / "app_icon.ico") if (ROOT / "build" / "app_icon.ico").exists() else None,
+    version=str(ROOT / "build" / "version_info.txt") if (ROOT / "build" / "version_info.txt").exists() else None,
+)

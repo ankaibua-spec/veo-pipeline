@@ -61,25 +61,31 @@ Cron `*/5 * * * *` on VPS:
 3. Insert into `english-pronunciation-factory.db` table `veo_drive_files`
 4. English Pronunciation Factory worker picks up → YouTube upload
 
-## Setup
+## Download & Run
 
-See [docs/setup.md](docs/setup.md) for full step-by-step.
+**End user (PC Windows):**
 
-**TL;DR:**
+1. Download `VEO_Pipeline_Pro.exe` from [Releases](https://github.com/ankaibua-spec/veo-pipeline/releases) (or [latest build artifact](https://github.com/ankaibua-spec/veo-pipeline/actions))
+2. Double-click to run — no Python install needed
+3. First run: install Playwright Chromium (one-time, tool prompts)
 
-PC:
-```bash
-pip install PyQt6 playwright watchdog google-api-python-client requests
-playwright install chromium
-cd tool
-python run_veo_4.0.py  # gen videos via GUI
+For Drive sync + Telegram notify, run `pc/post_processor.py` separately. See [docs/setup.md](docs/setup.md).
 
-# Separate terminal:
-cd pc
-set VEO_WATCH_DIR=C:\veo_output
-set VEO_DRIVE_FOLDER_ID=<your-folder-id>
-python post_processor.py
+## Build from source (developer)
+
+```powershell
+# Windows
+git clone https://github.com/ankaibua-spec/veo-pipeline
+cd veo-pipeline
+powershell -ExecutionPolicy Bypass -File build/build.ps1
+# Output: dist/VEO_Pipeline_Pro.exe
 ```
+
+GitHub Actions auto-builds .exe on every push to main + on tag `v*`.
+
+## Setup (full pipeline)
+
+See [docs/setup.md](docs/setup.md) for step-by-step.
 
 VPS:
 ```bash
