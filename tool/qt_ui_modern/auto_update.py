@@ -230,7 +230,9 @@ def apply_update(zip_path: Path):
         encoding="utf-8",
     )
 
-    bat_path = work_dir / "veo_swap.bat"
+    # Bat lives OUTSIDE work_dir so the bat itself doesn't lock the dir we
+    # want to clean up. Self-delete via `del "%~f0"` still works.
+    bat_path = Path(tempfile.gettempdir()) / f"veo_swap_{nonce}.bat"
     # Note: the .bat below contains NO f-string interpolation of user-controlled
     # paths. The only interpolated value is `paths_file`, which is a path the
     # updater itself just wrote and validated. Paths read via `set /p` are
@@ -241,7 +243,7 @@ def apply_update(zip_path: Path):
         "\r\n"
         "REM Read paths written by the updater (one per line).\r\n"
         "set /p TARGET=<\"" + str(paths_file) + "\"\r\n"
-        "for /f \"skip=1 delims=\" %%I in (\"" + str(paths_file) + "\") do (\r\n"
+        "for /f \"usebackq skip=1 delims=\" %%I in (\"" + str(paths_file) + "\") do (\r\n"
         "  if not defined BACKUP   ( set \"BACKUP=%%I\"   ) else (\r\n"
         "  if not defined EXTRACT  ( set \"EXTRACT=%%I\"  ) else (\r\n"
         "  if not defined EXEPATH  ( set \"EXEPATH=%%I\"  ) else (\r\n"
@@ -292,10 +294,11 @@ def apply_update(zip_path: Path):
         encoding="ascii",
     )
 
-    # Touch the exit-marker so the .bat unblocks once we _exit.
-    # The current process clears it before exiting so the wait loop below works.
-    # (We create it here but the launcher writes a final flag right before _exit.)
-    exit_marker.write_bytes(b"")  # placeholder; launcher overwrites with "exit\n"
+    # NB: exit_marker is NOT created here. The .bat polls `if exist EXITFLAG`,
+    # so the file must come into existence only when the launcher calls
+    # signal_exit() right before os._exit(). Pre-creating the file would make
+    # the .bat skip its wait loop and start robocopy while the .exe is still
+    # holding file locks → robocopy errorlevel 8 → rollback → no swap.
 
     # Spawn detached.
     subprocess.Popen(
