@@ -60,9 +60,20 @@ def main():
     def reveal():
         win.show()
         splash.finish(win)
+        # Check for update 1.5s after window shown (non-blocking UX)
+        QTimer.singleShot(1500, lambda: _check_update_async(win, app))
 
     QTimer.singleShot(600, reveal)
     sys.exit(app.exec())
+
+
+def _check_update_async(win, app):
+    try:
+        from qt_ui_modern.auto_update import check_and_prompt
+        if check_and_prompt(win):
+            app.quit()
+    except Exception as e:
+        print(f"[update] {e}")
 
 
 if __name__ == "__main__":

@@ -43,6 +43,7 @@ a = Analysis(
         "qt_ui_modern.license_dialog",
         "qt_ui_modern.onboarding",
         "qt_ui_modern.tray",
+        "qt_ui_modern.auto_update",
         "tab_text_to_video",
         "tab_image_to_video",
         "tab_idea_to_video",
