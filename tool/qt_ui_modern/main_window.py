@@ -1,6 +1,13 @@
-"""VEO Pipeline Pro main window — wraps legacy working tabs in Fluent sidebar."""
+"""VEO Pipeline Pro main window — wraps legacy working tabs in Fluent sidebar.
+
+Optimizations:
+- Lazy tab loading: legacy tabs imported on first nav click (saves 1-3s startup)
+- Page widgets cached after first build
+- No blocking imports in __init__
+"""
 from __future__ import annotations
 import sys
+import importlib
 from pathlib import Path
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QColor
@@ -18,34 +25,42 @@ if str(_TOOL_ROOT) not in sys.path:
 from . import theme as t
 from .styles import GLOBAL_QSS
 
-# Import legacy working tabs
-try:
-    from tab_text_to_video import TextToVideoTab
-    from tab_image_to_video import ImageToVideoTab
-    from tab_idea_to_video import IdeaToVideoTab
-    from tab_character_sync import CharacterSyncTab
-    from tab_create_image import CreateImageTab
-    from tab_grok_settings import GrokSettingsTab
-    from tab_settings import SettingsTab
-    from status_panel import StatusPanel
-    LEGACY_OK = True
-except Exception as e:
-    print(f"[warn] legacy tabs not available: {e}")
-    LEGACY_OK = False
+# Lazy: legacy tabs loaded on demand via _lazy_tab()
+LEGACY_TABS = {
+    "text2video":   ("tab_text_to_video",   "TextToVideoTab",   ()),
+    "image2video":  ("tab_image_to_video",  "ImageToVideoTab",  ()),
+    "idea2video":   ("tab_idea_to_video",   "IdeaToVideoTab",   ("config",)),
+    "character":    ("tab_character_sync",  "CharacterSyncTab", ()),
+    "create_image": ("tab_create_image",    "CreateImageTab",   ()),
+    "grok":         ("tab_grok_settings",   "GrokSettingsTab",  ()),
+    "settings":     ("tab_settings",        "SettingsTab",      ("config",)),
+    "queue":        ("status_panel",        "StatusPanel",      ()),
+}
 
-# Import config dataclass + settings_manager
-try:
-    from qt_ui.ui import AppConfig
-    from settings_manager import SettingsManager
-    CONFIG_OK = True
-except Exception as e:
-    print(f"[warn] AppConfig not available: {e}")
-    CONFIG_OK = False
 
-from .pages import (
-    Image2VideoPage, Idea2VideoPage, CharacterPage,
-    CreateImagePage, GrokPage, QueuePage, HistoryPage, SettingsPage,
-)
+def _lazy_tab(key: str, config=None):
+    """Import + instantiate legacy tab on first call. Returns widget or None."""
+    if key not in LEGACY_TABS:
+        return None
+    mod_name, cls_name, args = LEGACY_TABS[key]
+    try:
+        mod = importlib.import_module(mod_name)
+        cls = getattr(mod, cls_name)
+        if "config" in args:
+            return cls(config)
+        return cls()
+    except Exception as e:
+        print(f"[warn] lazy {key}: {e}")
+        return None
+
+
+def _lazy_config():
+    try:
+        from qt_ui.ui import AppConfig
+        return AppConfig.load()
+    except Exception as e:
+        print(f"[warn] config: {e}")
+        return None
 
 
 def _shadow(blur=20, alpha=60):
@@ -193,17 +208,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{t.APP_NAME} v{t.APP_VERSION}")
         self.setMinimumSize(1200, 760)
         self.resize(1440, 880)
-        self._cfg = self._load_config()
+        self._cfg = None  # lazy
+        self._page_built: dict[str, bool] = {}
         self._build()
 
-    def _load_config(self):
-        if not CONFIG_OK:
-            return None
-        try:
-            return AppConfig.load()
-        except Exception as e:
-            print(f"[warn] config load: {e}")
-            return None
+    def _ensure_config(self):
+        if self._cfg is None:
+            self._cfg = _lazy_config()
+        return self._cfg
 
     def _build(self):
         central = QWidget(); central.setObjectName("mainContainer")
@@ -218,62 +230,76 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget(); self.stack.setObjectName("contentArea")
 
-        # Wire pages — legacy if available, fallback to mockups
-        self.pages = {"home": HomePage()}
-        if LEGACY_OK:
-            try: self.pages["text2video"] = _wrap_legacy(TextToVideoTab())
-            except Exception as e: print(f"[warn] TextToVideoTab: {e}")
-            try: self.pages["image2video"] = _wrap_legacy(ImageToVideoTab())
-            except Exception as e: print(f"[warn] ImageToVideoTab: {e}")
-            try: self.pages["idea2video"] = _wrap_legacy(IdeaToVideoTab(self._cfg))
-            except Exception as e: print(f"[warn] IdeaToVideoTab: {e}")
-            try: self.pages["character"] = _wrap_legacy(CharacterSyncTab())
-            except Exception as e: print(f"[warn] CharacterSyncTab: {e}")
-            try: self.pages["create_image"] = _wrap_legacy(CreateImageTab())
-            except Exception as e: print(f"[warn] CreateImageTab: {e}")
-            try: self.pages["grok"] = _wrap_legacy(GrokSettingsTab())
-            except Exception as e: print(f"[warn] GrokSettingsTab: {e}")
-            try: self.pages["settings"] = _wrap_legacy(SettingsTab(self._cfg))
-            except Exception as e: print(f"[warn] SettingsTab: {e}")
-            try: self.pages["queue"] = _wrap_legacy(StatusPanel())
-            except Exception as e: print(f"[warn] StatusPanel: {e}")
-
-        # Fallback to mockups
-        fallbacks = {
-            "text2video": None,  # no mockup needed; if legacy missing user reverts to run_veo_4.0.py
-            "image2video": Image2VideoPage,
-            "idea2video": Idea2VideoPage,
-            "character": CharacterPage,
-            "create_image": CreateImagePage,
-            "grok": GrokPage,
-            "queue": QueuePage,
-            "history": HistoryPage,
-            "settings": SettingsPage,
-        }
-        for k, cls in fallbacks.items():
-            if k not in self.pages and cls is not None:
-                self.pages[k] = cls()
-
-        # History always uses new design (no legacy equivalent)
-        from .pages import HistoryPage as _Hist
-        self.pages["history"] = _Hist()
-
+        # Build only Home + 9 placeholder containers. Real content loaded lazily.
+        self.pages: dict[str, QWidget] = {"home": HomePage()}
         for key, _, _ in t.NAV_ITEMS:
-            page = self.pages.get(key)
-            if page is None:
-                page = QLabel(f"[{key}] page unavailable; run `run_veo_4.0.py` for legacy UI")
-            self.stack.addWidget(page)
-        right.addWidget(self.stack)
+            if key == "home":
+                self.stack.addWidget(self.pages[key])
+                self._page_built[key] = True
+                continue
+            placeholder = QLabel(f"Loading {key}...")
+            placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            placeholder.setStyleSheet(f"color: {t.TEXT_MUTED}; font-size: 14px;")
+            self.pages[key] = placeholder
+            self.stack.addWidget(placeholder)
+            self._page_built[key] = False
 
+        right.addWidget(self.stack)
         right_w = QWidget(); right_w.setLayout(right)
         outer.addWidget(right_w, 1)
 
         sb = QStatusBar()
-        legacy_status = "LEGACY OK" if LEGACY_OK else "LEGACY FAIL"
-        sb.showMessage(f"Ready · {t.APP_NAME} v{t.APP_VERSION} · {legacy_status} · {t.AUTHOR}")
+        sb.showMessage(f"Ready · {t.APP_NAME} v{t.APP_VERSION} · {t.AUTHOR}")
         self.setStatusBar(sb)
 
+    def _build_page_lazy(self, key: str):
+        """Build the actual page widget on first navigation. Cached after."""
+        if self._page_built.get(key):
+            return
+
+        # History keeps mockup design (no legacy equivalent)
+        if key == "history":
+            from .pages import HistoryPage as _Hist
+            new_widget = _Hist()
+        elif key in LEGACY_TABS:
+            cfg = self._ensure_config() if "config" in LEGACY_TABS[key][2] else None
+            tab = _lazy_tab(key, cfg)
+            if tab is not None:
+                new_widget = _wrap_legacy(tab)
+            else:
+                # Fallback to mockup if legacy fails
+                new_widget = self._mockup_for(key)
+        else:
+            new_widget = self._mockup_for(key)
+
+        if new_widget is None:
+            new_widget = QLabel(f"[{key}] unavailable")
+
+        # Replace placeholder in stack
+        idx = [k for k, _, _ in t.NAV_ITEMS].index(key)
+        old = self.stack.widget(idx)
+        self.stack.removeWidget(old)
+        self.stack.insertWidget(idx, new_widget)
+        old.deleteLater()
+        self.pages[key] = new_widget
+        self._page_built[key] = True
+
+    def _mockup_for(self, key: str):
+        from .pages import (
+            Image2VideoPage, Idea2VideoPage, CharacterPage,
+            CreateImagePage, GrokPage, QueuePage, HistoryPage, SettingsPage,
+        )
+        m = {
+            "image2video": Image2VideoPage, "idea2video": Idea2VideoPage,
+            "character": CharacterPage, "create_image": CreateImagePage,
+            "grok": GrokPage, "queue": QueuePage, "history": HistoryPage,
+            "settings": SettingsPage,
+        }
+        cls = m.get(key)
+        return cls() if cls else None
+
     def _on_nav(self, key: str):
+        self._build_page_lazy(key)
         idx = [k for k, _, _ in t.NAV_ITEMS].index(key)
         self.stack.setCurrentIndex(idx)
         title, subtitle = self.PAGE_TITLES.get(key, (key, ""))

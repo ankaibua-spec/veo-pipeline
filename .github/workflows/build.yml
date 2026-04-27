@@ -22,22 +22,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller PyQt6 playwright requests urllib3 watchdog google-api-python-client google-auth google-auth-oauthlib
 
-      - name: Build exe
+      - name: Build exe (onedir for fast startup)
         run: |
           pyinstaller --clean --distpath dist --workpath build/work build/veo-pipeline-pro.spec
+
+      - name: Zip onedir output
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/VEO_Pipeline_Pro/* -DestinationPath dist/VEO_Pipeline_Pro_Windows.zip -CompressionLevel Optimal
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VEO_Pipeline_Pro_Windows
-          path: dist/VEO_Pipeline_Pro.exe
+          path: dist/VEO_Pipeline_Pro_Windows.zip
           retention-days: 30
 
       - name: Release on tag
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/VEO_Pipeline_Pro.exe
+          files: dist/VEO_Pipeline_Pro_Windows.zip
           generate_release_notes: true
 
       - name: Notify Telegram + Zalo

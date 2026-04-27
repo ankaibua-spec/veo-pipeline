@@ -85,21 +85,21 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# --onedir mode: 3-5x faster startup vs --onefile (no extraction overhead).
+# Distributed as zip from CI/Releases.
+
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,  # onedir
     name="VEO_Pipeline_Pro",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # no console window
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -107,4 +107,15 @@ exe = EXE(
     entitlements_file=None,
     icon=str(ROOT / "build" / "app_icon.ico") if (ROOT / "build" / "app_icon.ico").exists() else None,
     version=str(ROOT / "build" / "version_info.txt") if (ROOT / "build" / "version_info.txt").exists() else None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name="VEO_Pipeline_Pro",
 )

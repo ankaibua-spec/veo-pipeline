@@ -36,13 +36,16 @@ def main():
     splash = show_splash()
     app.processEvents()
 
+    # Build window in background while splash visible
     win = MainWindow()
+    app.processEvents()
 
     def reveal():
         win.show()
         splash.finish(win)
 
-    QTimer.singleShot(1500, reveal)
+    # 600ms splash — long enough to read brand, short enough to feel snappy
+    QTimer.singleShot(600, reveal)
     sys.exit(app.exec())
 
 
