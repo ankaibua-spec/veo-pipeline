@@ -4,24 +4,24 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  Home, 
-  Video, 
-  Image as ImageIcon, 
-  LayoutList, 
-  History, 
-  Settings, 
-  Menu, 
-  Play, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Zap, 
-  Cpu, 
+import {
+  Home,
+  Video,
+  Image as ImageIcon,
+  LayoutList,
+  History,
+  Settings,
+  Menu,
+  Play,
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Zap,
+  Cpu,
   HardDrive,
   Users,
   LogOut,
@@ -30,9 +30,14 @@ import {
   Sparkles,
   ChevronDown,
   Trash2,
-  FileText
+  FileText,
+  Key,
+  Cloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import LicenseModal from './screens/LicenseModal';
+import OnboardingModal from './screens/OnboardingModal';
+import DriveSyncModal from './screens/DriveSyncModal';
 
 // Types
 type Page = 'home' | 'text2video' | 'image2video' | 'bulk-login' | 'queue' | 'history' | 'settings';
@@ -547,6 +552,9 @@ const QueuePage = () => (
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [licenseOpen, setLicenseOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [driveOpen, setDriveOpen] = useState(false);
 
   const NavItem = ({ id, label, icon, activeIcon }: { id: Page, label: string, icon: React.ReactNode, activeIcon?: React.ReactNode }) => {
     const isActive = currentPage === id;
@@ -631,11 +639,32 @@ export default function App() {
             </button>
             <h1 className="text-sm font-bold text-blue-500 uppercase tracking-[1px]">Project Dashboard</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 bg-[#2B2B2B] border border-[#404040] px-3 py-1.5 rounded-lg">
               <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
               <span className="text-[11px] font-bold text-[#A0A0A0]">ONLINE</span>
             </div>
+            <button
+              onClick={() => setDriveOpen(true)}
+              title="Drive Sync Settings"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[#A0A0A0] hover:text-white hover:bg-[#2B2B2B] transition-colors"
+            >
+              <Cloud size={16} />
+            </button>
+            <button
+              onClick={() => setLicenseOpen(true)}
+              title="License"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[#A0A0A0] hover:text-white hover:bg-[#2B2B2B] transition-colors"
+            >
+              <Key size={16} />
+            </button>
+            <button
+              onClick={() => setOnboardingOpen(true)}
+              title="Setup Wizard"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[#A0A0A0] hover:text-white hover:bg-[#2B2B2B] transition-colors"
+            >
+              <Sparkles size={16} />
+            </button>
             <button className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-black px-4 h-9 rounded-lg flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all uppercase tracking-wide">
               <Plus size={14} />
               Generate
@@ -667,7 +696,7 @@ export default function App() {
         {/* Footer info bar */}
         <footer className="h-8 border-t border-[#404040] bg-[#1c2026] flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] font-mono text-[#707070] uppercase tracking-widest">
-            VEO Pipeline Pro v1.0.4 | System Status: <span className="text-emerald-500 font-bold">Operational</span>
+            VEO Pipeline Pro v6.0.0 | System Status: <span className="text-emerald-500 font-bold">Operational</span>
           </div>
           <div className="flex gap-6 text-[10px] font-mono text-[#707070] uppercase tracking-widest">
             <button className="hover:text-blue-400 transition-colors">Support</button>
@@ -675,6 +704,10 @@ export default function App() {
           </div>
         </footer>
       </div>
+
+      <LicenseModal open={licenseOpen} onClose={() => setLicenseOpen(false)} />
+      <OnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      <DriveSyncModal open={driveOpen} onClose={() => setDriveOpen(false)} />
     </div>
   );
 }

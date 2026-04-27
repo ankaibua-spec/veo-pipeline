@@ -1,6 +1,6 @@
 [package]
 name = "veo-pipeline-pro"
-version = "5.2.0"
+version = "6.0.0"
 description = "VEO Pipeline Pro - AI Video Generation"
 authors = ["Truong Hoa <truonghoa.gtvt@gmail.com>"]
 edition = "2021"
