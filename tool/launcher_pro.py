@@ -125,7 +125,7 @@ def main():
     QScrollArea {{ background: transparent; border: none; }}
     """)
 
-    # Add toolbar buttons: Bulk Login + Drive Settings (Fluent features)
+    # Add toolbar buttons: Bulk Login + Drive Settings + Check Updates
     try:
         from PyQt6.QtWidgets import QPushButton, QWidget, QHBoxLayout
         from qt_ui_modern.drive_settings import DriveSettingsDialog
@@ -143,6 +143,11 @@ def main():
         drive_btn = QPushButton("☁ Drive Sync")
         drive_btn.clicked.connect(lambda: DriveSettingsDialog(win).exec())
         chrome_layout.addWidget(drive_btn)
+
+        update_btn = QPushButton("🔄 Update")
+        update_btn.setToolTip(f"Current: v{t.APP_VERSION}. Click to check GitHub Releases for newer version.")
+        update_btn.clicked.connect(lambda: _check_update_loud(win, app))
+        chrome_layout.addWidget(update_btn)
 
         if hasattr(win, "menuBar") and win.menuBar() is not None:
             win.menuBar().setCornerWidget(chrome)
@@ -170,22 +175,56 @@ def main():
     sys.exit(app.exec())
 
 
-def _check_update_async(win, app):
+def _check_update_async(win, app, *, manual: bool = False):
+    """Auto-trigger on startup (silent on error/no-update) OR manual click (loud)."""
     try:
-        from qt_ui_modern.auto_update import check_and_prompt
+        from qt_ui_modern.auto_update import check_and_prompt, check_latest
+        from qt_ui_modern import theme as t
+
+        if manual:
+            # Manual: always show result
+            from PyQt6.QtWidgets import QMessageBox, QApplication
+            release = check_latest()
+            if release is None:
+                # Either up-to-date or check failed — disambiguate
+                import urllib.request, json
+                try:
+                    req = urllib.request.Request(
+                        "https://api.github.com/repos/ankaibua-spec/veo-pipeline/releases/latest",
+                        headers={"User-Agent": "veo-updater"},
+                    )
+                    with urllib.request.urlopen(req, timeout=8) as r:
+                        d = json.loads(r.read().decode())
+                    latest_tag = d.get("tag_name", "?")
+                    QMessageBox.information(
+                        win, "Up to date",
+                        f"You are on the latest version.\n\nCurrent: v{t.APP_VERSION}\nLatest: {latest_tag}",
+                    )
+                except Exception as e:
+                    QMessageBox.warning(
+                        win, "Check failed",
+                        f"Cannot reach GitHub:\n{e}\n\nCheck network / firewall.",
+                    )
+                return
+
         if check_and_prompt(win):
-            # Force kill — tray closeEvent override would block app.quit()
             import os as _os
             print("[update] applying — force exit for swap script")
-            # Restore original close + close window
             try:
                 from PyQt6.QtCore import QTimer as _QT
-                # Give batch script 200ms to start before we exit
                 _QT.singleShot(200, lambda: _os._exit(0))
             except Exception:
                 _os._exit(0)
     except Exception as e:
         print(f"[update] {e}")
+        if manual:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(win, "Update error", f"Unexpected error:\n{e}")
+
+
+def _check_update_loud(win, app):
+    """Wrapper for the toolbar button — always shows a result."""
+    _check_update_async(win, app, manual=True)
 
 
 if __name__ == "__main__":
