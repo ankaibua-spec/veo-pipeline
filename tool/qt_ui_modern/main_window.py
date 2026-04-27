@@ -19,6 +19,10 @@ from PyQt6.QtWidgets import (
 
 from . import theme as t
 from .styles import GLOBAL_QSS
+from .pages import (
+    Image2VideoPage, Idea2VideoPage, CharacterPage,
+    CreateImagePage, GrokPage, QueuePage, HistoryPage, SettingsPage,
+)
 
 
 def _shadow(blur=20, alpha=60):
@@ -325,15 +329,22 @@ class MainWindow(QMainWindow):
         # Stacked content
         self.stack = QStackedWidget()
         self.stack.setObjectName("contentArea")
-        # Pages
+        # Pages — full Fluent design for all 10 features
         self.pages = {
             "home": HomePage(),
             "text2video": Text2VideoPage(),
+            "image2video": Image2VideoPage(),
+            "idea2video": Idea2VideoPage(),
+            "character": CharacterPage(),
+            "create_image": CreateImagePage(),
+            "grok": GrokPage(),
+            "queue": QueuePage(),
+            "history": HistoryPage(),
+            "settings": SettingsPage(),
         }
-        for key, (label, _, _) in [(k, (l, "", "")) for k, l, _ in t.NAV_ITEMS]:
+        for key, _, _ in t.NAV_ITEMS:
             if key not in self.pages:
                 self.pages[key] = PlaceholderPage(self.PAGE_TITLES.get(key, (key, ""))[0])
-        for key, _, _ in t.NAV_ITEMS:
             self.stack.addWidget(self.pages[key])
         right.addWidget(self.stack)
 
