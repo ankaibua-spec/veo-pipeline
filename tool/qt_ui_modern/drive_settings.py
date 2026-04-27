@@ -1,10 +1,13 @@
 """Drive Settings dialog — configure Drive sync from inside app.
 
 No need to manually edit JSON. Saves to ~/.veo_pipeline/onboarded.json.
+Helper buttons: open Drive folder, open Google Cloud Console, import OAuth from app.trbm.shop.
 """
 from __future__ import annotations
 import json
 import shutil
+import webbrowser
+import urllib.request
 from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -15,6 +18,9 @@ from . import theme as t
 
 CONFIG_FILE = Path.home() / ".veo_pipeline" / "onboarded.json"
 CRED_FILE = Path.home() / ".veo_pipeline" / "drive_credentials.json"
+APP_TRBM_BASE = "https://app.trbm.shop"
+DRIVE_BASE = "https://drive.google.com/drive/folders/"
+CLOUD_CONSOLE = "https://console.cloud.google.com/iam-admin/serviceaccounts"
 
 
 def load_config() -> dict:
@@ -86,13 +92,18 @@ class DriveSettingsDialog(QDialog):
         out_row.addWidget(out_auto)
         layout.addLayout(out_row)
 
-        # Drive folder ID
+        # Drive folder ID — with "Open Drive" helper
         layout.addWidget(self._lbl("Google Drive folder ID"))
         self.drive_id = QLineEdit(cfg.get("drive_id", ""))
         self.drive_id.setPlaceholderText("Copy from Drive URL: drive.google.com/drive/folders/<THIS_PART>")
-        layout.addWidget(self.drive_id)
+        drive_row = QHBoxLayout()
+        drive_row.addWidget(self.drive_id)
+        open_drive_btn = QPushButton("📂 Open Drive")
+        open_drive_btn.clicked.connect(self._open_drive)
+        drive_row.addWidget(open_drive_btn)
+        layout.addLayout(drive_row)
 
-        # Drive credentials JSON
+        # Drive credentials JSON — 3 ways: file picker, Cloud Console helper, import from app.trbm.shop
         layout.addWidget(self._lbl("Service account JSON file"))
         self.cred_path = QLineEdit()
         if CRED_FILE.exists():
@@ -106,6 +117,21 @@ class DriveSettingsDialog(QDialog):
         cred_browse.clicked.connect(self._browse_cred)
         cred_row.addWidget(cred_browse)
         layout.addLayout(cred_row)
+
+        # Helper buttons row
+        helper_row = QHBoxLayout()
+        cloud_btn = QPushButton("☁ Open Cloud Console")
+        cloud_btn.clicked.connect(lambda: webbrowser.open(CLOUD_CONSOLE))
+        cloud_btn.setToolTip("Open Google Cloud Console → IAM → Service Accounts to create JSON key")
+        helper_row.addWidget(cloud_btn)
+
+        import_btn = QPushButton("⬇ Import from app.trbm.shop")
+        import_btn.clicked.connect(self._import_from_vps)
+        import_btn.setToolTip("Download Drive credentials configured on VPS dashboard")
+        helper_row.addWidget(import_btn)
+
+        helper_row.addStretch()
+        layout.addLayout(helper_row)
 
         # Telegram (optional)
         layout.addWidget(self._lbl("Telegram bot token (optional, for notifications)"))
@@ -164,6 +190,55 @@ class DriveSettingsDialog(QDialog):
         d = _autodetect_output_dir()
         if d: self.output_dir.setText(str(d))
         else: QMessageBox.information(self, "Auto-detect", "No downloads folder found. Run tool to gen at least 1 video first.")
+
+    def _open_drive(self):
+        fid = self.drive_id.text().strip()
+        if fid:
+            webbrowser.open(DRIVE_BASE + fid)
+        else:
+            webbrowser.open("https://drive.google.com/drive/my-drive")
+
+    def _import_from_vps(self):
+        """Fetch Drive folder + credentials from app.trbm.shop dashboard."""
+        try:
+            req = urllib.request.Request(
+                f"{APP_TRBM_BASE}/api/drive/credentials",
+                headers={"User-Agent": "VEO-Pipeline-Pro"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read().decode())
+        except Exception as e:
+            QMessageBox.warning(self, "Import failed",
+                f"Could not fetch from app.trbm.shop:\n{e}\n\n"
+                f"Make sure VPS endpoint /api/drive/credentials exists.\n"
+                f"Or manually copy JSON from Google Cloud Console.")
+            return
+
+        # Response: { drive_id, oauth: {client_id,client_secret,refresh_token}, email }
+        if data.get("drive_id"):
+            self.drive_id.setText(data["drive_id"])
+
+        # Save credentials (OAuth or service account)
+        cred_data = None
+        if data.get("oauth"):
+            o = data["oauth"]
+            cred_data = {
+                "type": "authorized_user",
+                "client_id": o.get("client_id"),
+                "client_secret": o.get("client_secret"),
+                "refresh_token": o.get("refresh_token"),
+            }
+        elif data.get("service_account_json"):
+            cred_data = data["service_account_json"]
+
+        if cred_data:
+            CRED_FILE.parent.mkdir(parents=True, exist_ok=True)
+            CRED_FILE.write_text(json.dumps(cred_data, indent=2))
+            self.cred_path.setText(str(CRED_FILE) + f"  (OAuth from app.trbm.shop · {data.get('email','?')})")
+            self.cred_path.setReadOnly(True)
+
+        QMessageBox.information(self, "Import OK",
+            f"Drive credentials imported.\nAccount: {data.get('email','?')}\nFolder: {data.get('drive_id','?')[:30]}...\n\nClick Save to apply.")
 
     def _save(self):
         cfg = {

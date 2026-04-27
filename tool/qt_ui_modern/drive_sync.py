@@ -76,18 +76,49 @@ def _rename(p: Path) -> Path:
     return new_path
 
 
+def _build_drive_creds():
+    """Build credentials from CRED_FILE — supports BOTH service account JSON AND
+    OAuth authorized_user JSON (imported from app.trbm.shop)."""
+    try:
+        with open(CRED_FILE) as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"[drive] cred load fail: {e}")
+        return None
+
+    cred_type = data.get("type", "")
+    if cred_type == "service_account":
+        from google.oauth2 import service_account
+        return service_account.Credentials.from_service_account_info(
+            data, scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+    elif cred_type == "authorized_user" or "refresh_token" in data:
+        # OAuth user credentials (from app.trbm.shop import)
+        from google.oauth2.credentials import Credentials
+        return Credentials(
+            token=data.get("access_token"),
+            refresh_token=data.get("refresh_token"),
+            client_id=data.get("client_id"),
+            client_secret=data.get("client_secret"),
+            token_uri="https://oauth2.googleapis.com/token",
+            scopes=["https://www.googleapis.com/auth/drive.file"],
+        )
+    else:
+        print(f"[drive] unknown cred type: {cred_type}")
+        return None
+
+
 def _drive_upload(p: Path, folder_id: str) -> str | None:
     try:
-        from google.oauth2 import service_account
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
     except ImportError:
         print("[drive] google-api-python-client missing")
         return None
+    creds = _build_drive_creds()
+    if creds is None:
+        return None
     try:
-        creds = service_account.Credentials.from_service_account_file(
-            str(CRED_FILE), scopes=["https://www.googleapis.com/auth/drive.file"]
-        )
         svc = build("drive", "v3", credentials=creds, cache_discovery=False)
         media = MediaFileUpload(str(p), mimetype="video/mp4", resumable=True)
         meta = {"name": p.name, "parents": [folder_id]}
