@@ -36,6 +36,11 @@ a = Analysis(
         # Legacy tab modules (loaded dynamically)
         "qt_ui.ui",
         "qt_ui_modern",
+        # Legacy deps from status_panel + workflows
+        "imageio", "imageio_ffmpeg", "imageio.plugins.ffmpeg",
+        "PIL", "PIL.Image", "PIL.ImageDraw", "PIL.ImageFont",
+        "cv2", "numpy",
+        "moviepy", "moviepy.editor", "moviepy.video.io.ffmpeg_writer",
         "qt_ui_modern.theme",
         "qt_ui_modern.styles",
         "qt_ui_modern.main_window",
