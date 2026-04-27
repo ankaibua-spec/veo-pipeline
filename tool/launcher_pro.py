@@ -123,17 +123,29 @@ def main():
     QScrollArea { background: transparent; border: none; }
     """)
 
-    # Add Bulk Login button to original UI (keep Fluent feature)
+    # Add toolbar buttons: Bulk Login + Drive Settings (Fluent features)
     try:
-        from PyQt6.QtWidgets import QPushButton
+        from PyQt6.QtWidgets import QPushButton, QWidget, QHBoxLayout
+        from qt_ui_modern.drive_settings import DriveSettingsDialog
+
+        chrome = QWidget()
+        chrome_layout = QHBoxLayout(chrome)
+        chrome_layout.setContentsMargins(0, 0, 8, 0)
+        chrome_layout.setSpacing(6)
+
         bulk_btn = QPushButton("👥 Bulk Login")
         bulk_btn.setObjectName("Accent")
         bulk_btn.clicked.connect(lambda: BulkLoginDialog(win).exec())
-        # Inject into menubar or toolbar if present
+        chrome_layout.addWidget(bulk_btn)
+
+        drive_btn = QPushButton("☁ Drive Sync")
+        drive_btn.clicked.connect(lambda: DriveSettingsDialog(win).exec())
+        chrome_layout.addWidget(drive_btn)
+
         if hasattr(win, "menuBar") and win.menuBar() is not None:
-            win.menuBar().setCornerWidget(bulk_btn)
+            win.menuBar().setCornerWidget(chrome)
     except Exception as e:
-        print(f"[bulk] inject fail: {e}")
+        print(f"[chrome] inject fail: {e}")
 
     app.processEvents()
 

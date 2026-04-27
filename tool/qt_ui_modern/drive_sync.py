@@ -9,6 +9,7 @@ Auto-disabled if drive_id missing.
 """
 from __future__ import annotations
 import os
+import sys
 import json
 import time
 import re
@@ -149,12 +150,29 @@ def _process(p: Path, cfg: dict):
     _tg_notify(msg, cfg)
 
 
+def _autodetect_output_dir() -> Path | None:
+    """Tool saves to <exe_dir>/downloads/video. Auto-detect."""
+    candidates = [
+        Path(sys.executable).parent / "downloads" / "video" if hasattr(sys, "frozen") else None,
+        Path.cwd() / "downloads" / "video",
+        Path.home() / "Downloads" / "VEO_Pipeline_Pro_Windows" / "downloads" / "video",
+    ]
+    for c in candidates:
+        if c and c.exists():
+            return c
+    return None
+
+
 def _watch_loop():
     """Polling watcher (no watchdog dep — uses os.listdir + mtime tracking)."""
+    import sys as _sys
     cfg = load_config()
     watch_dir = Path(cfg.get("output_dir", "")) if cfg.get("output_dir") else None
     if not watch_dir or not watch_dir.exists():
-        print(f"[drive] output_dir not set or missing")
+        # Auto-detect tool's downloads/video subfolder
+        watch_dir = _autodetect_output_dir()
+    if not watch_dir or not watch_dir.exists():
+        print(f"[drive] output_dir not set + auto-detect failed")
         return
 
     print(f"[drive] watching {watch_dir} → folder {cfg.get('drive_id','')[:20]}...")

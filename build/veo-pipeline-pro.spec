@@ -55,6 +55,7 @@ a = Analysis(
         "qt_ui_modern.auto_update",
         "qt_ui_modern.bulk_login",
         "qt_ui_modern.drive_sync",
+        "qt_ui_modern.drive_settings",
         # Google Drive deps
         "google", "google.oauth2", "google.oauth2.service_account",
         "googleapiclient", "googleapiclient.discovery", "googleapiclient.http",
