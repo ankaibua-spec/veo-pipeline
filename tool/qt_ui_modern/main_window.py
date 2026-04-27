@@ -176,12 +176,117 @@ class HomePage(QWidget):
         layout.addStretch()
 
 
+_LEGACY_DARK_OVERRIDE = f"""
+/* Force dark theme on legacy tabs that ship light styles */
+QWidget {{
+    background-color: {t.BG_DARK};
+    color: {t.TEXT_PRIMARY};
+}}
+QLabel {{
+    color: {t.TEXT_PRIMARY};
+    background: transparent;
+}}
+QGroupBox {{
+    color: {t.TEXT_PRIMARY};
+    background: {t.BG_CARD};
+    border: 1px solid {t.BORDER};
+    border-radius: 10px;
+    margin-top: 14px;
+    padding-top: 18px;
+    font-weight: 600;
+}}
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 14px;
+    padding: 0 8px;
+    color: {t.TEXT_PRIMARY};
+    background: {t.BG_DARK};
+}}
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
+    background: {t.BG_LIGHT};
+    color: {t.TEXT_PRIMARY};
+    border: 1px solid {t.BORDER};
+    border-radius: 6px;
+    padding: 6px 10px;
+    selection-background-color: {t.PRIMARY};
+}}
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
+    border-color: {t.PRIMARY};
+}}
+QPushButton {{
+    background: {t.BG_LIGHT};
+    color: {t.TEXT_PRIMARY};
+    border: 1px solid {t.BORDER};
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-weight: 500;
+}}
+QPushButton:hover {{
+    background: {t.BG_MID};
+    border-color: {t.PRIMARY};
+}}
+QPushButton:pressed {{ background: {t.PRIMARY_PRESSED}; color: white; }}
+QPushButton:disabled {{ color: {t.TEXT_MUTED}; background: {t.BG_MID}; }}
+QCheckBox, QRadioButton {{ color: {t.TEXT_PRIMARY}; }}
+QTableWidget, QTableView, QTreeView, QListView, QListWidget {{
+    background: {t.BG_CARD};
+    color: {t.TEXT_PRIMARY};
+    gridline-color: {t.BORDER};
+    border: 1px solid {t.BORDER};
+    border-radius: 6px;
+    selection-background-color: {t.PRIMARY};
+}}
+QHeaderView::section {{
+    background: {t.BG_MID};
+    color: {t.TEXT_SECONDARY};
+    border: none;
+    border-bottom: 1px solid {t.BORDER};
+    padding: 6px 10px;
+    font-weight: 600;
+}}
+QTabWidget::pane {{
+    border: 1px solid {t.BORDER};
+    border-radius: 6px;
+    background: {t.BG_CARD};
+}}
+QTabBar::tab {{
+    background: {t.BG_MID};
+    color: {t.TEXT_SECONDARY};
+    padding: 8px 18px;
+    border: 1px solid {t.BORDER};
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 2px;
+}}
+QTabBar::tab:selected {{
+    background: {t.PRIMARY};
+    color: white;
+}}
+QTabBar::tab:hover:!selected {{ background: {t.BG_LIGHT}; color: {t.TEXT_PRIMARY}; }}
+QFrame, QScrollArea {{ background: transparent; }}
+QToolButton {{ color: {t.TEXT_PRIMARY}; background: {t.BG_LIGHT}; border: 1px solid {t.BORDER}; border-radius: 6px; padding: 6px; }}
+QToolButton:hover {{ background: {t.BG_MID}; }}
+QStatusBar QLabel {{ background: transparent; }}
+QMenu {{ background: {t.BG_MID}; color: {t.TEXT_PRIMARY}; border: 1px solid {t.BORDER}; }}
+QMenu::item:selected {{ background: {t.PRIMARY}; color: white; }}
+"""
+
+
 def _wrap_legacy(widget) -> QWidget:
-    """Wrap legacy tab in modern padded container."""
+    """Wrap legacy tab + force dark theme override on all child widgets."""
+    # Strip widget's own stylesheet that fights dark theme
+    try:
+        widget.setStyleSheet(widget.styleSheet() + _LEGACY_DARK_OVERRIDE)
+    except Exception:
+        pass
+
     w = QWidget()
+    w.setStyleSheet(_LEGACY_DARK_OVERRIDE)
     layout = QVBoxLayout(w)
     layout.setContentsMargins(20, 16, 20, 16)
     sa = QScrollArea(); sa.setWidgetResizable(True); sa.setFrameShape(QFrame.Shape.NoFrame)
+    sa.setStyleSheet(f"QScrollArea {{ background: {t.BG_DARK}; border: none; }}")
     sa.setWidget(widget)
     layout.addWidget(sa)
     return w
