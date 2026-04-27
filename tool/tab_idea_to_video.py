@@ -52,7 +52,7 @@ class IdeaToVideoTab(QWidget):
         self.setStyleSheet(
             """
             QWidget#IdeaToVideoTab {
-                background: #edf4ff;
+                background: #1c1b1b;
             }
             QWidget#IdeaToVideoTab QLabel {
                 font-size: 14px;
@@ -60,10 +60,10 @@ class IdeaToVideoTab(QWidget):
             QWidget#IdeaToVideoTab QGroupBox {
                 font-size: 14px;
                 font-weight: 800;
-                border: 1px solid #c8d7f2;
+                border: 1px solid #2a2a2a;
                 border-radius: 8px;
                 margin-top: 8px;
-                background: #eaf2ff;
+                background: #201f1f;
             }
             QWidget#IdeaToVideoTab QGroupBox::title {
                 subcontrol-origin: margin;
@@ -74,11 +74,11 @@ class IdeaToVideoTab(QWidget):
             QWidget#IdeaToVideoTab QComboBox {
                 font-size: 13px;
                 min-height: 32px;
-                background: #f3f8ff;
+                background: #1c1b1b;
             }
             QWidget#IdeaToVideoTab QComboBox QAbstractItemView {
-                background: #f3f8ff;
-                selection-background-color: #dbeafe;
+                background: #1c1b1b;
+                selection-background-color: #2a2a2a;
                 outline: none;
             }
             QWidget#IdeaToVideoTab QComboBox QAbstractItemView::item {
@@ -87,8 +87,8 @@ class IdeaToVideoTab(QWidget):
             }
             QWidget#IdeaToVideoTab QPlainTextEdit {
                 font-size: 14px;
-                background: #f1f7ff;
-                border: 1px solid #c8d7f2;
+                background: #1c1b1b;
+                border: 1px solid #2a2a2a;
                 border-radius: 8px;
             }
             """
@@ -141,7 +141,7 @@ class IdeaToVideoTab(QWidget):
         root.addWidget(cfg_box)
 
         script_title = QLabel("Kịch bản/ Ý tưởng:")
-        script_title.setStyleSheet("font-weight: 700; color: #1f2d48; font-size: 14px;")
+        script_title.setStyleSheet("font-weight: 700; color: #e5e2e1; font-size: 14px;")
         root.addWidget(script_title)
 
         self.idea_editor = QPlainTextEdit()

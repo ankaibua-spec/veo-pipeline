@@ -121,8 +121,8 @@ class _SelectAllHeader(QHeaderView):
             side = 14
             x = int(rect.x() + (rect.width() - side) / 2)
             y = int(rect.y() + (rect.height() - side) / 2)
-            painter.setPen(QColor("#16a34a"))
-            painter.setBrush(QBrush(QColor("#16a34a") if panel._select_all_checked else QColor("transparent")))
+            painter.setPen(QColor("#22C55E"))
+            painter.setBrush(QBrush(QColor("#22C55E") if panel._select_all_checked else QColor("transparent")))
             painter.drawRect(x, y, side, side)
             if panel._select_all_checked:
                 painter.setPen(QColor("#ffffff"))
@@ -421,7 +421,7 @@ class StatusPanel(QWidget):
         self._run_log = QPlainTextEdit()
         self._run_log.setReadOnly(True)
         self._run_log.setMinimumHeight(78)
-        self._run_log.setStyleSheet("background:#1e1e1e; color:#dcdcdc; border:1px solid #333;")
+        self._run_log.setStyleSheet("background:#0E0E13; color:#e5e2e1; border:1px solid #2a2a2a;")
         log_layout.addWidget(self._run_log)
 
         self._body_splitter.addWidget(self._log_group)
@@ -434,8 +434,8 @@ class StatusPanel(QWidget):
 
         self._account_group = QGroupBox("Thông tin tài khoản")
         self._account_group.setStyleSheet(
-            "QGroupBox{font-weight:800; color:#1f2d48; border:1px solid #c8d7f2; border-radius:10px; margin-top:6px; background:#eaf2ff;}"
-            "QGroupBox::title{subcontrol-origin:margin; left:10px; padding:0 4px; color:#1f2d48;}"
+            "QGroupBox{font-weight:800; color:#e5e2e1; border:1px solid #2a2a2a; border-radius:10px; margin-top:6px; background:#201f1f;}"
+            "QGroupBox::title{subcontrol-origin:margin; left:10px; padding:0 4px; color:#e5e2e1;}"
         )
         self._account_group.setMinimumHeight(72)
         self._account_group.setMaximumHeight(86)
@@ -444,19 +444,19 @@ class StatusPanel(QWidget):
         account_layout.setSpacing(18)
 
         lb_account = QLabel("Tài khoản:")
-        lb_account.setStyleSheet("font-weight:800; color:#1f2d48;")
+        lb_account.setStyleSheet("font-weight:800; color:#e5e2e1;")
         self._account_value = QLabel("Default")
-        self._account_value.setStyleSheet("color:#334155;")
+        self._account_value.setStyleSheet("color:#c2c6d5;")
 
         lb_type = QLabel("Loại tài khoản:")
-        lb_type.setStyleSheet("font-weight:800; color:#1f2d48;")
+        lb_type.setStyleSheet("font-weight:800; color:#e5e2e1;")
         self._account_type_value = QLabel("VIP1")
-        self._account_type_value.setStyleSheet("color:#334155;")
+        self._account_type_value.setStyleSheet("color:#c2c6d5;")
 
         lb_expiry = QLabel("Ngày hết hạn:")
-        lb_expiry.setStyleSheet("font-weight:800; color:#1f2d48;")
+        lb_expiry.setStyleSheet("font-weight:800; color:#e5e2e1;")
         self._account_expiry_value = QLabel("-")
-        self._account_expiry_value.setStyleSheet("color:#334155;")
+        self._account_expiry_value.setStyleSheet("color:#c2c6d5;")
 
         account_layout.addWidget(lb_account)
         account_layout.addWidget(self._account_value)
@@ -646,11 +646,11 @@ class StatusPanel(QWidget):
         btn.setText("✓" if bool(checked) else "")
         if checked:
             btn.setStyleSheet(
-                "QToolButton {border: 1px solid #16a34a; border-radius: 3px; background: #16a34a; color: white; font-weight: 800;}"
+                "QToolButton {border: 1px solid #22C55E; border-radius: 3px; background: #22C55E; color: white; font-weight: 800;}"
             )
         else:
             btn.setStyleSheet(
-                "QToolButton {border: 1px solid #16a34a; border-radius: 3px; background: transparent; color: #16a34a; font-weight: 800;}"
+                "QToolButton {border: 1px solid #22C55E; border-radius: 3px; background: transparent; color: #22C55E; font-weight: 800;}"
             )
 
     def _toggle_row_checked(self, row: int) -> None:
@@ -1263,7 +1263,7 @@ class StatusPanel(QWidget):
 
         lbl = QLabel("")
         lbl.setObjectName("PromptCellLabel")
-        lbl.setStyleSheet("color:#111827;")
+        lbl.setStyleSheet("color:#e5e2e1;")
         lbl.setTextFormat(Qt.TextFormat.PlainText)
         lbl.setWordWrap(True)
         lbl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -1305,12 +1305,12 @@ class StatusPanel(QWidget):
         dlg.setModal(True)
         dlg.resize(760, 420)
         dlg.setStyleSheet(
-            "QDialog{background:#f8fafc;}"
-            "QLabel{color:#0f172a;font-weight:700;}"
-            "QTextEdit{background:#ffffff;border:1px solid #d1d5db;border-radius:8px;padding:8px;color:#111827;}"
+            "QDialog{background:#201f1f;}"
+            "QLabel{color:#e5e2e1;font-weight:700;}"
+            "QTextEdit{background:#ffffff;border:1px solid #2a2a2a;border-radius:8px;padding:8px;color:#e5e2e1;}"
             "QPushButton{min-height:32px;border-radius:8px;padding:0 14px;font-weight:700;}"
-            "QPushButton#okBtn{background:#2563eb;color:white;}"
-            "QPushButton#cancelBtn{background:#e5e7eb;color:#111827;}"
+            "QPushButton#okBtn{background:#4F8EF7;color:white;}"
+            "QPushButton#cancelBtn{background:#2a2a2a;color:#e5e2e1;}"
         )
 
         root = QVBoxLayout(dlg)
@@ -1398,13 +1398,13 @@ class StatusPanel(QWidget):
             b.setVisible(should_show)
             b.setEnabled(False)
             if should_show:
-                b.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#f3f4f6; color:#9ca3af;")
+                b.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#1c1b1b; color:#8c909e;")
             b.clicked.connect(lambda _=False, cell_widget=vw, n=idx: self._select_video_output_by_widget(cell_widget, n))
             buttons.append(b)
 
         vlabel = QLabel("", preview)
         vlabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        vlabel.setStyleSheet("color:#1f2d48; font-weight:700;")
+        vlabel.setStyleSheet("color:#e5e2e1; font-weight:700;")
         vlabel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         pv_lay.addWidget(vlabel, 1)
         vlay.addWidget(preview, 1)
@@ -1512,11 +1512,11 @@ class StatusPanel(QWidget):
             btn.setVisible(should_show)
             btn.setEnabled(has_video)
             if should_show and has_video and i == selected_idx:
-                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#2563eb; color:#fff;")
+                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#4F8EF7; color:#fff;")
             elif should_show and has_video:
-                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#e5e7eb; color:#111827;")
+                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#2a2a2a; color:#e5e2e1;")
             elif should_show:
-                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#f3f4f6; color:#9ca3af;")
+                btn.setStyleSheet("border-radius:10px; font-size:10px; padding:0px; background:#1c1b1b; color:#8c909e;")
             try:
                 btn.raise_()
             except Exception:
@@ -2033,13 +2033,13 @@ class StatusPanel(QWidget):
         code = self._status_code(row)
         text = str(status_text or item.text() or "")
         if code in {"FAILED", "STOPPED", "CANCELED"} or "Lỗi" in text or "Hủy" in text:
-            color = QColor("#d32f2f")
+            color = QColor("#EF4444")
         elif code in {"SUCCESSFUL"}:
-            color = QColor("#2e7d32")
+            color = QColor("#22C55E")
         elif code in {"ACTIVE", "DOWNLOADING", "TOKEN", "REQUESTED"}:
-            color = QColor("#ef6c00")
+            color = QColor("#FF6B35")
         else:
-            color = QColor("#374151")
+            color = QColor("#c2c6d5")
         item.setForeground(QBrush(color))
 
     def _refresh_pending_positions(self) -> None:
@@ -2414,13 +2414,13 @@ class StatusPanel(QWidget):
 
         if self.lbl_status_summary is not None:
             self.lbl_status_summary.setText(
-                "<span style='color:#16a34a;'>Hoàn thành(" + str(done_count) + ")</span>"
+                "<span style='color:#22C55E;'>Hoàn thành(" + str(done_count) + ")</span>"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                "<span style='color:#f59e0b;'>Đang tạo(" + str(creating_count) + ")</span>"
+                "<span style='color:#FACC15;'>Đang tạo(" + str(creating_count) + ")</span>"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                "<span style='color:#2563eb;'>Đang chờ(" + str(waiting_count) + ")</span>"
+                "<span style='color:#4F8EF7;'>Đang chờ(" + str(waiting_count) + ")</span>"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                "<span style='color:#f87171;'>Lỗi(" + str(failed_count) + ")</span>"
+                "<span style='color:#EF4444;'>Lỗi(" + str(failed_count) + ")</span>"
             )
 
     def _clear_media_for_rows(self, rows: list[int], delete_files: bool = True) -> None:

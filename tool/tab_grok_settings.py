@@ -47,35 +47,35 @@ class GrokSettingsTab(QWidget):
 
         combo_style = """
             QComboBox {
-                border: 1px solid #7ea5f0;
+                border: 1px solid #4F8EF7;
                 border-radius: 7px;
                 padding: 4px 26px 4px 8px;
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #f8fbff, stop:1 #e6f0ff);
-                color: #1e2f4f;
+                    stop:0 #201f1f, stop:1 #2a2a2a);
+                color: #e5e2e1;
                 font-weight: 600;
                 min-height: 28px;
             }
             QComboBox::drop-down {
                 width: 22px;
-                border-left: 1px solid #bfd2f6;
-                background: #dbe8ff;
+                border-left: 1px solid #2a2a2a;
+                background: #2a2a2a;
                 border-top-right-radius: 7px;
                 border-bottom-right-radius: 7px;
             }
             QComboBox:disabled {
-                color: #60708f;
-                border: 1px solid #b7c6e4;
-                background: #ecf2ff;
+                color: #8c909e;
+                border: 1px solid #2a2a2a;
+                background: #201f1f;
             }
             QComboBox::drop-down:disabled {
-                background: #dde6f7;
+                background: #2a2a2a;
             }
             QComboBox QAbstractItemView {
-                border: 1px solid #bcd0f4;
-                selection-background-color: #dbe9ff;
-                selection-color: #1f2d48;
-                background: #f7fbff;
+                border: 1px solid #2a2a2a;
+                selection-background-color: #2a2a2a;
+                selection-color: #e5e2e1;
+                background: #201f1f;
             }
         """
 
@@ -130,13 +130,13 @@ class GrokSettingsTab(QWidget):
         self.grok_multi_video.setCurrentIndex(idx_multi if idx_multi >= 0 else 0)
 
         lb_account_type = QLabel("Loại tài khoản:")
-        lb_account_type.setStyleSheet("font-weight:700; color:#1f2d48;")
+        lb_account_type.setStyleSheet("font-weight:700; color:#e5e2e1;")
         lb_length = QLabel("Thời gian video:")
-        lb_length.setStyleSheet("font-weight:700; color:#1f2d48;")
+        lb_length.setStyleSheet("font-weight:700; color:#e5e2e1;")
         lb_resolution = QLabel("Chất lượng video:")
-        lb_resolution.setStyleSheet("font-weight:700; color:#1f2d48;")
+        lb_resolution.setStyleSheet("font-weight:700; color:#e5e2e1;")
         lb_multi = QLabel("MULTI VIDEO:")
-        lb_multi.setStyleSheet("font-weight:700; color:#1f2d48;")
+        lb_multi.setStyleSheet("font-weight:700; color:#e5e2e1;")
         try:
             lb_account_type.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
             lb_length.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
@@ -208,8 +208,8 @@ class GrokSettingsTab(QWidget):
         )
         note.setWordWrap(True)
         note.setStyleSheet(
-            "color:#334155; font-size:12px; line-height:1.45; "
-            "background:#f7fbff; border:1px solid #c8d7f2; border-radius:8px; padding:10px;"
+            "color:#c2c6d5; font-size:12px; line-height:1.45; "
+            "background:#201f1f; border:1px solid #2a2a2a; border-radius:8px; padding:10px;"
         )
         body.addWidget(note)
         body.addStretch(1)
@@ -355,18 +355,18 @@ class GrokSettingsTab(QWidget):
             layout.setSpacing(10)
 
             title = QLabel("Đã mở Chrome GROK")
-            title.setStyleSheet("font-size:16px; font-weight:800; color:#1f2d48;")
+            title.setStyleSheet("font-size:16px; font-weight:800; color:#e5e2e1;")
             layout.addWidget(title)
 
             info = QLabel()
             info.setWordWrap(True)
-            info.setStyleSheet("color:#334155; font-size:12px;")
+            info.setStyleSheet("color:#c2c6d5; font-size:12px;")
             layout.addWidget(info)
 
             status = QLabel("")
             status.setWordWrap(True)
             status.setStyleSheet(
-                "color:#0f172a; font-size:12px; background:#eef5ff; border:1px solid #c8d7f2; border-radius:8px; padding:8px;"
+                "color:#e5e2e1; font-size:12px; background:#1c1b1b; border:1px solid #2a2a2a; border-radius:8px; padding:8px;"
             )
             layout.addWidget(status)
 

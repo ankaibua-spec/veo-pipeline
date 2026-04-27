@@ -15,10 +15,10 @@ _ORIG_QUESTION: Callable | None = None
 
 _POPUP_QSS = """
 QMessageBox {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #f8fbff, stop:1 #eef6ff);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #201f1f, stop:1 #1c1b1b);
 }
 QMessageBox QLabel {
-    color: #0f1f3a;
+    color: #e5e2e1;
     font-size: 13px;
 }
 QMessageBox QLabel#qt_msgbox_label {
@@ -27,24 +27,24 @@ QMessageBox QLabel#qt_msgbox_label {
     padding: 4px 2px;
 }
 QMessageBox QLabel#qt_msgbox_informativelabel {
-    color: #334155;
+    color: #c2c6d5;
     font-size: 12px;
 }
 QMessageBox QPushButton {
     min-width: 88px;
     min-height: 30px;
     padding: 4px 10px;
-    border: 1px solid #9ec5ff;
+    border: 1px solid #4F8EF7;
     border-radius: 8px;
-    background: #dbeafe;
-    color: #12306b;
+    background: #2a2a2a;
+    color: #e5e2e1;
     font-weight: 700;
 }
 QMessageBox QPushButton:hover {
-    background: #bfdbfe;
+    background: #2a2a2a;
 }
 QMessageBox QPushButton:pressed {
-    background: #93c5fd;
+    background: #4F8EF7;
 }
 """
 

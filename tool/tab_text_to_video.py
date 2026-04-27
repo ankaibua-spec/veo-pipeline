@@ -103,15 +103,15 @@ class PromptEditor(QPlainTextEdit):
 
     def _paint_id_area(self, event) -> None:
         painter = QPainter(self._id_area)
-        painter.fillRect(event.rect(), QColor("#eef5ff"))
+        painter.fillRect(event.rect(), QColor("#1c1b1b"))
 
         # Right border of gutter
-        border_pen = QPen(QColor("#d8deee"))
+        border_pen = QPen(QColor("#2a2a2a"))
         painter.setPen(border_pen)
         painter.drawLine(self._id_area.width() - 1, 0, self._id_area.width() - 1, self._id_area.height())
 
         # Draw visible block IDs + dashed separators
-        dash_pen = QPen(QColor("#d8deee"))
+        dash_pen = QPen(QColor("#2a2a2a"))
         dash_pen.setStyle(Qt.PenStyle.DashLine)
         dash_pen.setDashPattern([2.0, 2.0])
 
@@ -125,7 +125,7 @@ class PromptEditor(QPlainTextEdit):
             if block.isVisible() and bottom >= event.rect().top():
                 pid = int(self._id_by_block.get(block_number, 0) or 0)
                 if pid:
-                    painter.setPen(QColor("#31456a"))
+                    painter.setPen(QColor("#c2c6d5"))
                     painter.drawText(
                         0,
                         top,
@@ -148,7 +148,7 @@ class PromptEditor(QPlainTextEdit):
 
         # Draw faint dashed separators across the prompt area.
         painter = QPainter(self.viewport())
-        dash_pen = QPen(QColor("#d8deee"))
+        dash_pen = QPen(QColor("#2a2a2a"))
         dash_pen.setStyle(Qt.PenStyle.DashLine)
         dash_pen.setDashPattern([2.0, 2.0])
         painter.setPen(dash_pen)
@@ -175,7 +175,7 @@ class TextToVideoTab(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         title = QLabel("Nhập prompt (mỗi dòng là 1 prompt)")
-        title.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        title.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         layout.addWidget(title)
 
         self.editor = PromptEditor()

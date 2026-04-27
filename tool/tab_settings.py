@@ -422,17 +422,17 @@ class SettingsTab(QWidget):
             layout.setSpacing(10)
 
             title = QLabel("Đã mở profile thành công")
-            title.setStyleSheet("font-size:16px; font-weight:800; color:#1f2d48;")
+            title.setStyleSheet("font-size:16px; font-weight:800; color:#e5e2e1;")
             layout.addWidget(title)
 
             info = QLabel()
             info.setWordWrap(True)
-            info.setStyleSheet("color:#334155; font-size:12px;")
+            info.setStyleSheet("color:#c2c6d5; font-size:12px;")
             layout.addWidget(info)
 
             status = QLabel("")
             status.setWordWrap(True)
-            status.setStyleSheet("color:#0f172a; font-size:12px; background:#eef5ff; border:1px solid #c8d7f2; border-radius:8px; padding:8px;")
+            status.setStyleSheet("color:#e5e2e1; font-size:12px; background:#1c1b1b; border:1px solid #2a2a2a; border-radius:8px; padding:8px;")
             layout.addWidget(status)
 
             btn_row = QHBoxLayout()
@@ -638,7 +638,7 @@ class SettingsTab(QWidget):
 
             log_view = QTextEdit()
             log_view.setReadOnly(True)
-            log_view.setStyleSheet("background:#1e1e1e; color:#dcdcdc; border:1px solid #333;")
+            log_view.setStyleSheet("background:#0E0E13; color:#e5e2e1; border:1px solid #2a2a2a;")
             layout.addWidget(log_view, 1)
 
             btn_row = QHBoxLayout()

@@ -22,7 +22,7 @@ class CreateImageFromPromptTab(QWidget):
         layout.setSpacing(8)
 
         title = QLabel("Nhập prompt (mỗi dòng là 1 prompt)")
-        title.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        title.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         layout.addWidget(title)
 
         self.editor = PromptEditor()
@@ -67,7 +67,7 @@ class CreateImageTab(QWidget):
         top.setContentsMargins(8, 6, 8, 0)
         top.setSpacing(8)
         lbl = QLabel("Model Tạo ảnh")
-        lbl.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        lbl.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         top.addWidget(lbl)
 
         self.model_combo = QComboBox()

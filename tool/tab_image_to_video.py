@@ -60,7 +60,7 @@ class _SingleImageTab(QWidget):
         # Step 1 (images)
         row1 = QHBoxLayout()
         step1 = QLabel("Bước 1: Chọn hàng loạt ảnh (Sẽ crop về tỷ lệ đã chọn)")
-        step1.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        step1.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         row1.addWidget(step1)
         row1.addStretch(1)
 
@@ -92,7 +92,7 @@ class _SingleImageTab(QWidget):
 
         # Step 2 (prompts)
         step2 = QLabel("Bước 2: Nhập hàng loạt prompt tương ứng")
-        step2.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        step2.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         root.addWidget(step2)
 
         self.prompts = PromptEditor()
@@ -213,12 +213,12 @@ class _SingleImageTab(QWidget):
         if path:
             btn_name.setStyleSheet(
                 "QPushButton{border:none; background:transparent; padding:0px; text-align:center;"
-                "color:#31456a; font-size:10px; font-weight:600;}"
+                "color:#c2c6d5; font-size:10px; font-weight:600;}"
             )
         else:
             btn_name.setStyleSheet(
                 "QPushButton{border:none; background:transparent; padding:0px; text-align:center;"
-                "color:#2563eb; font-size:12px; font-weight:800;}"
+                "color:#4F8EF7; font-size:12px; font-weight:800;}"
             )
         btn_name.clicked.connect(lambda _=False, i=idx: self._pick_single(i))
 
@@ -234,8 +234,8 @@ class _SingleImageTab(QWidget):
         btn_del = QPushButton("x")
         btn_del.setFixedSize(22, 22)
         btn_del.setStyleSheet(
-            "background:#fee2e2; border:1px solid #fecaca; border-radius:11px;"
-            "color:#dc2626; font-weight:400; font-size:14px; padding:0px;"
+            "background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.30); border-radius:11px;"
+            "color:#EF4444; font-weight:400; font-size:14px; padding:0px;"
         )
         btn_del.clicked.connect(lambda _=False, i=idx: self._remove_row(i))
 
@@ -248,12 +248,12 @@ class _SingleImageTab(QWidget):
         btn_down.clicked.connect(lambda _=False, i=idx: self._move_down(i))
 
         btn_up.setStyleSheet(
-            "background:#eaf2ff; border:1px solid #c8d7f2; border-radius:11px;"
-            "color:#3e5784; font-weight:500; font-size:12px; padding:0px;"
+            "background:#201f1f; border:1px solid #2a2a2a; border-radius:11px;"
+            "color:#c2c6d5; font-weight:500; font-size:12px; padding:0px;"
         )
         btn_down.setStyleSheet(
-            "background:#eaf2ff; border:1px solid #c8d7f2; border-radius:11px;"
-            "color:#3e5784; font-weight:500; font-size:12px; padding:0px;"
+            "background:#201f1f; border:1px solid #2a2a2a; border-radius:11px;"
+            "color:#c2c6d5; font-weight:500; font-size:12px; padding:0px;"
         )
 
         if idx <= 0:
@@ -458,7 +458,7 @@ class _StartEndImageTab(QWidget):
         # Step 1 (Start images)
         row1 = QHBoxLayout()
         step1 = QLabel("Bước 1: Chọn hàng loạt ảnh BẮT ĐẦU")
-        step1.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        step1.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         row1.addWidget(step1)
         row1.addStretch(1)
 
@@ -492,7 +492,7 @@ class _StartEndImageTab(QWidget):
         # Step 2 (End images)
         row2 = QHBoxLayout()
         step2 = QLabel("Bước 2: Chọn hàng loạt ảnh KẾT THÚC")
-        step2.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        step2.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         row2.addWidget(step2)
         row2.addStretch(1)
 
@@ -524,7 +524,7 @@ class _StartEndImageTab(QWidget):
 
         # Step 3 (Prompts)
         step3 = QLabel("Bước 3: Nhập hàng loạt prompt tương ứng")
-        step3.setStyleSheet("font-weight: 600; color: #1f2d48;")
+        step3.setStyleSheet("font-weight: 600; color: #e5e2e1;")
         root.addWidget(step3)
 
         # Prompt input: same behavior/UX as Text-to-Video prompt editor
@@ -711,13 +711,13 @@ class _StartEndImageTab(QWidget):
         if path:
             name_btn.setStyleSheet(
                 "QPushButton{border:none; background:transparent; padding:0px; text-align:center;"
-                "color:#31456a; font-size:10px; font-weight:600;}"
+                "color:#c2c6d5; font-size:10px; font-weight:600;}"
             )
         else:
             # Bigger, centered call-to-action
             name_btn.setStyleSheet(
                 "QPushButton{border:none; background:transparent; padding:0px; text-align:center;"
-                "color:#2563eb; font-size:12px; font-weight:800;}"
+                "color:#4F8EF7; font-size:12px; font-weight:800;}"
             )
 
         if role == "start":
@@ -739,8 +739,8 @@ class _StartEndImageTab(QWidget):
         btn_del = QPushButton("x")
         btn_del.setFixedSize(22, 22)
         btn_del.setStyleSheet(
-            "background:#fee2e2; border:1px solid #fecaca; border-radius:11px;"
-            "color:#dc2626; font-weight:400; font-size:14px; padding:0px;"
+            "background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.30); border-radius:11px;"
+            "color:#EF4444; font-weight:400; font-size:14px; padding:0px;"
         )
         if role == "start":
             btn_del.clicked.connect(lambda _=False, i=idx: self._remove_row(i))
@@ -756,12 +756,12 @@ class _StartEndImageTab(QWidget):
         btn_down.clicked.connect(lambda _=False, i=idx: self._move_down(i))
 
         btn_up.setStyleSheet(
-            "background:#eaf2ff; border:1px solid #c8d7f2; border-radius:11px;"
-            "color:#3e5784; font-weight:500; font-size:12px; padding:0px;"
+            "background:#201f1f; border:1px solid #2a2a2a; border-radius:11px;"
+            "color:#c2c6d5; font-weight:500; font-size:12px; padding:0px;"
         )
         btn_down.setStyleSheet(
-            "background:#eaf2ff; border:1px solid #c8d7f2; border-radius:11px;"
-            "color:#3e5784; font-weight:500; font-size:12px; padding:0px;"
+            "background:#201f1f; border:1px solid #2a2a2a; border-radius:11px;"
+            "color:#c2c6d5; font-weight:500; font-size:12px; padding:0px;"
         )
 
         if idx <= 0:

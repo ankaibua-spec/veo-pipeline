@@ -66,7 +66,7 @@ class _DropArea(QFrame):
             "(tối đa 10 ảnh)"
         )
         self._empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty.setStyleSheet("color:#64748b; font-weight:600;")
+        self._empty.setStyleSheet("color:#8c909e; font-weight:600;")
         self._body_lay.addWidget(self._empty, 1)
 
     def mousePressEvent(self, event) -> None:
@@ -142,7 +142,7 @@ class _CharacterCard(QWidget):
 
         self._img = QLabel()
         self._img.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._img.setStyleSheet("background:#f1f7ff; border:1px solid #c8d7f2; border-radius:8px;")
+        self._img.setStyleSheet("background:#1c1b1b; border:1px solid #2a2a2a; border-radius:8px;")
         g.addWidget(self._img, 0, 0)
 
         btn = QToolButton()
@@ -150,7 +150,7 @@ class _CharacterCard(QWidget):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setFixedSize(22, 22)
         btn.setStyleSheet(
-            "background:#64748b; color:white; border:none; border-radius:11px;"
+            "background:#8c909e; color:white; border:none; border-radius:11px;"
             "font-weight:900; font-size:16px;"
         )
         btn.clicked.connect(lambda _=False, i=self._idx: self._tab.remove_image(i))
@@ -213,7 +213,7 @@ class CharacterSyncTab(QWidget):
         ll.setSpacing(8)
 
         title = QLabel("Prompt hàng loạt")
-        title.setStyleSheet("font-weight:700; color:#1f2d48;")
+        title.setStyleSheet("font-weight:700; color:#e5e2e1;")
         ll.addWidget(title)
 
         self.prompts = PromptEditor()
@@ -254,7 +254,7 @@ class CharacterSyncTab(QWidget):
 
         self.drop = _DropArea(self)
         self.drop.setStyleSheet(
-            "QFrame#DropArea{border:1px dashed #c8d7f2; border-radius:10px; background:#eef5ff;}"
+            "QFrame#DropArea{border:1px dashed #2a2a2a; border-radius:10px; background:#1c1b1b;}"
         )
         rl.addWidget(self.drop, 1)
 
