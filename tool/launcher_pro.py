@@ -48,7 +48,19 @@ def main():
     if needs_onboarding():
         wiz = OnboardingWizard()
         if wiz.exec() == wiz.DialogCode.Accepted:
-            mark_onboarded(wiz.collect())
+            data = wiz.collect()
+            # If user gave drive_cred path, copy to ~/.veo_pipeline/drive_credentials.json
+            cred_src = data.pop("drive_cred", "")
+            if cred_src:
+                try:
+                    import shutil as _sh
+                    from pathlib import Path as _P
+                    dest = _P.home() / ".veo_pipeline" / "drive_credentials.json"
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    _sh.copy2(cred_src, dest)
+                except Exception as e:
+                    print(f"[onboard] copy cred fail: {e}")
+            mark_onboarded(data)
 
     splash = show_splash()
     app.processEvents()
@@ -72,6 +84,13 @@ def main():
     app.processEvents()
 
     install_tray(win, app)
+
+    # Start built-in Drive sync watcher (auto-uploads new videos to configured Drive folder)
+    try:
+        from qt_ui_modern.drive_sync import start_background
+        start_background()
+    except Exception as e:
+        print(f"[drive_sync] {e}")
 
     def reveal():
         win.show()

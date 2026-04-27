@@ -66,6 +66,10 @@ class IntegrationsPage(QWizardPage):
 
         self.drive_id = QLineEdit()
         self.drive_id.setPlaceholderText("Google Drive folder ID (optional)")
+        self.drive_cred = QLineEdit()
+        self.drive_cred.setPlaceholderText("Path to drive_credentials.json (optional)")
+        cred_btn = QPushButton("Browse...")
+        cred_btn.clicked.connect(self._browse_cred)
         self.tg_bot = QLineEdit()
         self.tg_bot.setPlaceholderText("Telegram bot token (optional)")
         self.tg_chat = QLineEdit()
@@ -73,16 +77,28 @@ class IntegrationsPage(QWizardPage):
         self.auto_update = QCheckBox("Enable auto-update from GitHub every 6h")
         self.auto_update.setChecked(True)
 
-        for w in (QLabel("Drive folder ID:"), self.drive_id,
-                  QLabel("Telegram bot token:"), self.tg_bot,
-                  QLabel("Telegram chat ID:"), self.tg_chat,
-                  self.auto_update):
-            layout.addWidget(w)
+        layout.addWidget(QLabel("Drive folder ID:"))
+        layout.addWidget(self.drive_id)
+        layout.addWidget(QLabel("Drive service account JSON:"))
+        cred_row = QHBoxLayout()
+        cred_row.addWidget(self.drive_cred)
+        cred_row.addWidget(cred_btn)
+        layout.addLayout(cred_row)
+        layout.addWidget(QLabel("Telegram bot token:"))
+        layout.addWidget(self.tg_bot)
+        layout.addWidget(QLabel("Telegram chat ID:"))
+        layout.addWidget(self.tg_chat)
+        layout.addWidget(self.auto_update)
 
         self.registerField("drive_id", self.drive_id)
+        self.registerField("drive_cred", self.drive_cred)
         self.registerField("tg_bot", self.tg_bot)
         self.registerField("tg_chat", self.tg_chat)
         self.registerField("auto_update", self.auto_update)
+
+    def _browse_cred(self):
+        f, _ = QFileDialog.getOpenFileName(self, "Drive service account JSON", "", "JSON (*.json)")
+        if f: self.drive_cred.setText(f)
 
 
 class FinishPage(QWizardPage):
@@ -133,6 +149,7 @@ class OnboardingWizard(QWizard):
         return {
             "output_dir": _txt("output_dir"),
             "drive_id": _txt("drive_id"),
+            "drive_cred": _txt("drive_cred"),
             "tg_bot": _txt("tg_bot"),
             "tg_chat": _txt("tg_chat"),
             "auto_update": bool(self.field("auto_update")),
