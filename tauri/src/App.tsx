@@ -88,10 +88,10 @@ const Dashboard = () => (
     </header>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <StatCard label="Videos Today" value="24" icon={<Video size={18} />} trend="+12%" />
-      <StatCard label="This Month" value="156" icon={<Clock size={18} />} trend="videos" />
-      <StatCard label="Credits Left" value="8,450" icon={<Zap size={18} />} trend="/ 10,000" progress={84} />
-      <StatCard label="Queue Status" value="3" icon={<LayoutList size={18} />} badge="Rendering" />
+      <StatCard label="Videos Today" value="0" icon={<Video size={18} />} trend="—" />
+      <StatCard label="This Month" value="0" icon={<Clock size={18} />} trend="videos" />
+      <StatCard label="Credits Left" value="—" icon={<Zap size={18} />} trend="not connected" />
+      <StatCard label="Queue Status" value="0" icon={<LayoutList size={18} />} badge="Idle" />
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -125,26 +125,10 @@ const Dashboard = () => (
                   <th className="px-6 py-3 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="text-xs text-[#E0E2EA] font-medium divide-y divide-[#404040]">
-                <tr className="hover:bg-[#333] transition-colors">
-                  <td className="px-6 py-4">Cinematic Landscape Pan</td>
-                  <td className="px-6 py-4 text-[#A0A0A0]">Text2Vid</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-[10px]">Completed</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#333] transition-colors">
-                  <td className="px-6 py-4">Character Walk Cycle</td>
-                  <td className="px-6 py-4 text-[#A0A0A0]">Img2Vid</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">Processing</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#333] transition-colors">
-                  <td className="px-6 py-4">Product Explainer 01</td>
-                  <td className="px-6 py-4 text-[#A0A0A0]">Text2Vid</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="bg-rose-500/20 text-rose-400 px-2 py-1 rounded text-[10px]">Failed</span>
+              <tbody className="text-xs text-[#E0E2EA] font-medium">
+                <tr>
+                  <td colSpan={3} className="px-6 py-12 text-center text-[#707070]">
+                    No videos generated yet. Click <span className="text-blue-400">Text to Video</span> to start.
                   </td>
                 </tr>
               </tbody>
@@ -158,25 +142,31 @@ const Dashboard = () => (
           <h3 className="text-sm font-bold text-white mb-4">System Status</h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#A0A0A0]">API Latency</span>
-              <span className="font-mono text-white">124ms</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-[#A0A0A0]">GPU Cluster</span>
-              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                Online
+              <span className="text-[#A0A0A0]">Backend</span>
+              <span className="flex items-center gap-1.5 text-[#707070] font-medium">
+                <span className="w-2 h-2 rounded-full bg-[#707070]"></span>
+                Not connected
               </span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#A0A0A0]">Storage</span>
-              <span className="font-mono text-white">45% Used</span>
+              <span className="text-[#A0A0A0]">Drive</span>
+              <span className="flex items-center gap-1.5 text-[#707070] font-medium">
+                <span className="w-2 h-2 rounded-full bg-[#707070]"></span>
+                Not connected
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#A0A0A0]">License</span>
+              <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                Not activated
+              </span>
             </div>
           </div>
         </section>
 
         <section className="bg-gradient-to-br from-blue-600/20 to-[#1F1F1F] border border-[#404040] rounded-xl p-6 min-h-[160px] flex flex-col justify-end">
-          <span className="text-[10px] font-mono text-blue-400 mb-1">v1.0.4</span>
+          <span className="text-[10px] font-mono text-blue-400 mb-1">v6.0.0</span>
           <h3 className="text-lg font-bold text-white tracking-tight">Engine Ready</h3>
         </section>
       </div>
