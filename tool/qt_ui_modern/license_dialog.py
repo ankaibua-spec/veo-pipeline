@@ -1,7 +1,9 @@
 """Commercial license activation dialog — first-run gate."""
 from __future__ import annotations
+import hmac
 import json
 import hashlib
+import os
 import platform
 import uuid
 from pathlib import Path
@@ -14,6 +16,23 @@ from PyQt6.QtWidgets import (
 from . import theme as t
 
 LICENSE_FILE = Path.home() / ".veo_pipeline" / "license.json"
+
+# Per-machine key is HMAC-SHA256(secret, machine_id) → first 16 hex chars,
+# formatted XXXX-XXXX-XXXX-XXXX. Secret can be overridden at build time via
+# VEO_LICENSE_SECRET env (CI sets a project-specific value); otherwise a
+# deterministic compile-time default is used.
+LICENSE_SECRET = os.environ.get(
+    "VEO_LICENSE_SECRET",
+    "veo-pipeline-pro-2026:truong-hoa:0345431884",
+).encode()
+
+
+def expected_key(mid: str) -> str:
+    """Deterministic per-machine key. Caller (dev) generates this offline and
+    sends to the user; user pastes it into the dialog."""
+    digest = hmac.new(LICENSE_SECRET, mid.encode(), hashlib.sha256).hexdigest().upper()
+    short = digest[:16]
+    return "-".join(short[i:i + 4] for i in range(0, 16, 4))
 
 
 def _windows_machine_guid() -> str | None:
@@ -60,15 +79,31 @@ def save_license(key: str, mid: str):
     tmp.replace(LICENSE_FILE)  # atomic on POSIX + NTFS
 
 
+def _bypass_enabled() -> bool:
+    """Bypass only when an explicit dev marker is on disk AND env var is set.
+    File is never created by the installer — dev creates it manually on their
+    own machine. Production binaries on customers cannot enable bypass with
+    just an env var."""
+    if os.environ.get("VEO_BYPASS_LICENSE") != "1":
+        return False
+    marker = Path.home() / ".veo_pipeline" / ".dev_bypass"
+    return marker.exists()
+
+
 def is_licensed() -> bool:
-    """Check valid license. Override via VEO_BYPASS_LICENSE=1 env (dev/personal)."""
-    import os
-    if os.environ.get("VEO_BYPASS_LICENSE") == "1":
+    """Validate license: stored key must match HMAC(secret, current machine_id).
+    Bypass only via dev marker file + env (see _bypass_enabled)."""
+    if _bypass_enabled():
         return True
     lic = load_license()
-    if not lic:
+    if not lic or not lic.get("activated"):
         return False
-    return lic.get("activated") and lic.get("machine_id") == machine_id()
+    stored_mid = lic.get("machine_id", "")
+    stored_key = (lic.get("key", "") or "").upper()
+    current = machine_id()
+    if stored_mid != current:
+        return False  # license bound to another machine
+    return hmac.compare_digest(stored_key, expected_key(current))
 
 
 class LicenseDialog(QDialog):
@@ -155,16 +190,21 @@ class LicenseDialog(QDialog):
         layout.addWidget(footer)
 
     def _activate(self):
+        # Normalise whitespace + dashes; uppercase for HMAC compare.
         key = self.key_input.text().strip().upper().replace(" ", "")
-        # Strip dashes for length check
-        key_clean = key.replace("-", "")
-        if len(key_clean) < 12:
-            QMessageBox.warning(self, "Key quá ngắn",
-                "License key cần ít nhất 12 ký tự (không tính dấu -).\n\n"
-                "Tạm thời nhập: AAAA-BBBB-CCCC-DDDD\n"
-                "Hoặc bypass: set VEO_BYPASS_LICENSE=1 trong env rồi mở lại.")
+        if "-" not in key and len(key) == 16:
+            key = "-".join(key[i:i + 4] for i in range(0, 16, 4))
+        mid = machine_id()
+        if not hmac.compare_digest(key, expected_key(mid)):
+            QMessageBox.warning(
+                self,
+                "License không hợp lệ",
+                "License key không khớp với Machine ID.\n\n"
+                "Gửi Machine ID bên dưới cho Truong Hoa qua Zalo "
+                f"{t.AUTHOR_ZALO} để nhận key đúng máy này.",
+            )
             return
-        save_license(key, machine_id())
+        save_license(key, mid)
         QMessageBox.information(self, "Activated", "License đã lưu. App tiếp tục mở.")
         self.accept()
 

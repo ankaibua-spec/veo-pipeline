@@ -206,19 +206,36 @@ class DriveSettingsDialog(QDialog):
             webbrowser.open("https://drive.google.com/drive/my-drive")
 
     def _import_from_vps(self):
-        """Fetch Drive folder + credentials from app.trbm.shop dashboard."""
+        """Fetch Drive folder + credentials from app.trbm.shop dashboard.
+
+        Hardened: enforces HTTPS, sends the activated license key + machine_id
+        as auth header. Server side must verify before returning the OAuth
+        refresh_token. (Client cannot enforce server policy — this is a
+        defence-in-depth signal so the endpoint can stop being open.)
+        """
+        if not APP_TRBM_BASE.startswith("https://"):
+            QMessageBox.warning(self, "Import blocked",
+                "Refusing to fetch credentials over plain HTTP. "
+                "VPS endpoint must be HTTPS.")
+            return
         try:
+            from .license_dialog import load_license, machine_id
+            lic = load_license() or {}
             req = urllib.request.Request(
                 f"{APP_TRBM_BASE}/api/drive/credentials",
-                headers={"User-Agent": "VEO-Pipeline-Pro"}
+                headers={
+                    "User-Agent": "VEO-Pipeline-Pro",
+                    "X-Machine-Id": machine_id(),
+                    "Authorization": f"Bearer {lic.get('key', '')}",
+                },
             )
             with urllib.request.urlopen(req, timeout=10) as r:
                 data = json.loads(r.read().decode())
         except Exception as e:
             QMessageBox.warning(self, "Import failed",
                 f"Could not fetch from app.trbm.shop:\n{e}\n\n"
-                f"Make sure VPS endpoint /api/drive/credentials exists.\n"
-                f"Or manually copy JSON from Google Cloud Console.")
+                f"VPS endpoint /api/drive/credentials must exist and accept the "
+                f"license-bound auth header. Or copy JSON from Google Cloud Console.")
             return
 
         # Response: { drive_id, oauth: {client_id,client_secret,refresh_token}, email }

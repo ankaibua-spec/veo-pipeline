@@ -209,12 +209,17 @@ def _check_update_async(win, app, *, manual: bool = False):
 
         if check_and_prompt(win):
             import os as _os
+            from qt_ui_modern.auto_update import consume_exit_handle, signal_exit
             print("[update] applying — force exit for swap script")
+            handle = consume_exit_handle()
+            def _do_exit():
+                signal_exit(handle)   # tell .bat we are gone
+                _os._exit(0)
             try:
                 from PyQt6.QtCore import QTimer as _QT
-                _QT.singleShot(200, lambda: _os._exit(0))
+                _QT.singleShot(200, _do_exit)
             except Exception:
-                _os._exit(0)
+                _do_exit()
     except Exception as e:
         print(f"[update] {e}")
         if manual:
