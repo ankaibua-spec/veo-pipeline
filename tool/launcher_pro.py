@@ -36,6 +36,30 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName(t.APP_NAME)
     app.setApplicationVersion(t.APP_VERSION)
+
+    # Force dark Fusion palette (overrides default light theme)
+    from PyQt6.QtGui import QPalette, QColor
+    app.setStyle("Fusion")
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor("#1F1F1F"))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.Base, QColor("#252525"))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#2B2B2B"))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#252525"))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.Button, QColor("#3A3A3A"))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor("#FF6B35"))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#0078D4"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.Link, QColor("#0078D4"))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#707070"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#707070"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#707070"))
+    app.setPalette(palette)
+
+    # Stylesheet on top of palette — for fluent chrome
     app.setStyleSheet(GLOBAL_QSS)
     app.setFont(QFont(t.FONT_BODY.split(",")[0].strip(), 10))
 
@@ -70,6 +94,34 @@ def main():
     cfg = AppConfig.load()
     win = MainWindow(cfg)
     win.setWindowTitle(f"{t.APP_NAME} v{t.APP_VERSION}")
+
+    # Re-apply our dark QSS AFTER MainWindow built (overrides any inline light styles)
+    win.setStyleSheet(GLOBAL_QSS + """
+    QWidget { color: #FFFFFF; }
+    QLabel { color: #FFFFFF; background: transparent; }
+    QMainWindow, QWidget#AppRoot { background: #1F1F1F; }
+    QTabWidget::pane { background: #1F1F1F; border: 1px solid #404040; }
+    QTabBar::tab { background: #2B2B2B; color: #A0A0A0; padding: 8px 16px; }
+    QTabBar::tab:selected { background: #0078D4; color: white; }
+    QPushButton { background: #3A3A3A; color: #FFFFFF; border: 1px solid #404040; border-radius: 6px; padding: 6px 14px; }
+    QPushButton:hover { background: #2B2B2B; border-color: #0078D4; }
+    QPushButton#Accent { background: #FF6B35; color: white; border-color: #FF6B35; font-weight: 600; }
+    QPushButton#Accent:hover { background: #FF8255; }
+    QPushButton#Danger { background: #EF4444; color: white; border-color: #EF4444; }
+    QPushButton#Warning { background: #F59E0B; color: white; border-color: #F59E0B; }
+    QPushButton#Orange { background: #FF6B35; color: white; border-color: #FF6B35; }
+    QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {
+        background: #3A3A3A; color: #FFFFFF; border: 1px solid #404040;
+        border-radius: 6px; padding: 6px 10px;
+    }
+    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus { border-color: #0078D4; }
+    QGroupBox { color: #FFFFFF; border: 1px solid #404040; border-radius: 8px; margin-top: 12px; padding-top: 14px; }
+    QGroupBox::title { color: #FFFFFF; subcontrol-origin: margin; left: 12px; padding: 0 6px; }
+    QTableView, QListView, QTreeView { background: #252525; color: #FFFFFF; gridline-color: #404040; selection-background-color: #0078D4; }
+    QHeaderView::section { background: #2B2B2B; color: #A0A0A0; border: none; border-bottom: 1px solid #404040; padding: 6px; }
+    QFrame { background: transparent; }
+    QScrollArea { background: transparent; border: none; }
+    """)
 
     # Add Bulk Login button to original UI (keep Fluent feature)
     try:
