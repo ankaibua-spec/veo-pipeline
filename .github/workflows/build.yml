@@ -6,6 +6,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -21,6 +25,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install deps
         run: |
@@ -61,9 +66,10 @@ jobs:
           TG_CHAT: ${{ secrets.VEO_TG_CHAT }}
           ZALO_BOT: ${{ secrets.VEO_ZALO_BOT }}
           ZALO_CHAT: ${{ secrets.VEO_ZALO_CHAT }}
+          JOB_STATUS: ${{ job.status }}
         shell: pwsh
         run: |
-          $status = if ($env:GITHUB_JOB_STATUS -eq 'success') { "✅" } else { "❌" }
+          $status = if ($env:JOB_STATUS -eq 'success') { "✅" } else { "❌" }
           $sha = $env:GITHUB_SHA.Substring(0,8)
           $url = "https://github.com/${env:GITHUB_REPOSITORY}/actions/runs/${env:GITHUB_RUN_ID}"
           $msg = "${status} <b>VEO Pipeline Pro build</b>%0Acommit ${sha}%0A${url}"

@@ -126,10 +126,14 @@ class OnboardingWizard(QWizard):
         """)
 
     def collect(self) -> dict:
+        def _txt(name):
+            v = self.field(name)
+            if hasattr(v, "text"): return v.text()
+            return str(v) if v is not None else ""
         return {
-            "output_dir": self.field("output_dir"),
-            "drive_id": self.field("drive_id"),
-            "tg_bot": self.field("tg_bot"),
-            "tg_chat": self.field("tg_chat"),
+            "output_dir": _txt("output_dir"),
+            "drive_id": _txt("drive_id"),
+            "tg_bot": _txt("tg_bot"),
+            "tg_chat": _txt("tg_chat"),
             "auto_update": bool(self.field("auto_update")),
         }

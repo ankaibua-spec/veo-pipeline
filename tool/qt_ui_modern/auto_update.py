@@ -35,13 +35,15 @@ def _exe_dir() -> Path:
 
 
 def _parse_version(s: str) -> tuple[int, ...]:
-    """`v5.0.1` or `5.0.1` → (5,0,1)."""
+    """`v5.0.1` or `5.0.1` → (5,0,1). Always 3-tuple normalized for compare."""
     s = s.strip().lstrip("v")
     parts = []
     for chunk in s.split("."):
         try: parts.append(int(chunk.split("-")[0]))
-        except: break
-    return tuple(parts) if parts else (0,)
+        except Exception: break
+    # Pad to 3 elements so (5,0) compares as (5,0,0) vs (5,0,1)
+    while len(parts) < 3: parts.append(0)
+    return tuple(parts[:3])
 
 
 def check_latest() -> dict | None:
@@ -91,15 +93,25 @@ def download_update(release: dict, progress_cb=None) -> Path | None:
         return None
 
 
+def _safe_extract(zf: zipfile.ZipFile, dest: Path):
+    """Extract zip with zip-slip protection. Reject paths escaping dest."""
+    dest_resolved = dest.resolve()
+    for member in zf.namelist():
+        target = (dest / member).resolve()
+        if not str(target).startswith(str(dest_resolved)):
+            raise ValueError(f"zip-slip detected: {member}")
+    zf.extractall(dest)
+
+
 def apply_update(zip_path: Path):
     """Extract update + write batch script + spawn it + exit current process.
 
-    Batch script:
-      1. Wait current PID exit
-      2. Backup current folder
-      3. Extract zip over folder
-      4. Relaunch exe
-      5. Self-delete
+    Improvements over v1:
+    - robocopy /MIR removes stale files in old install
+    - tasklist /FI exact PID match (no substring race)
+    - zip-slip protection on extract
+    - rollback from backup if swap fails
+    - cleanup old backup before new one
     """
     if not _is_frozen():
         print("[update] dev mode — skipping apply")
@@ -112,7 +124,7 @@ def apply_update(zip_path: Path):
 
     try:
         with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(extract_dir)
+            _safe_extract(zf, extract_dir)
     except Exception as e:
         print(f"[update] extract fail: {e}")
         return False
@@ -120,29 +132,43 @@ def apply_update(zip_path: Path):
     pid = os.getpid()
     bat = Path(tempfile.gettempdir()) / "veo_swap.bat"
     exe_path = target_dir / "VEO_Pipeline_Pro.exe"
+    backup_dir = Path(str(target_dir) + "_backup")
 
+    # robocopy exit codes 0-7 = success; 8+ = failure
     bat.write_text(f"""@echo off
 setlocal enabledelayedexpansion
 
-REM Wait for current process to exit
+REM Wait for current process to exit (exact PID match)
 :waitloop
-tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL
+tasklist /FI "PID eq {pid}" /NH 2>NUL | find /I "VEO_Pipeline_Pro" >NUL
 if "%errorlevel%"=="0" (
     timeout /t 1 /nobreak >NUL
     goto waitloop
 )
 
-REM Backup
-xcopy "{target_dir}" "{target_dir}_backup" /E /I /Y >NUL 2>&1
+REM Remove old backup
+if exist "{backup_dir}" rmdir /S /Q "{backup_dir}" >NUL 2>&1
 
-REM Swap
-xcopy "{extract_dir}" "{target_dir}" /E /I /Y >NUL
+REM Mirror current to backup (full snapshot)
+robocopy "{target_dir}" "{backup_dir}" /MIR /R:1 /W:1 /NFL /NDL /NJH /NJS >NUL
 
-REM Relaunch
+REM Mirror new build over current (removes stale files from old version)
+robocopy "{extract_dir}" "{target_dir}" /MIR /R:2 /W:2 /NFL /NDL /NJH /NJS >NUL
+if errorlevel 8 (
+    REM Failure — rollback from backup
+    robocopy "{backup_dir}" "{target_dir}" /MIR /R:1 /W:1 /NFL /NDL /NJH /NJS >NUL
+    start "" "{exe_path}"
+    rmdir /S /Q "{extract_dir}" >NUL 2>&1
+    del "%~f0"
+    exit /b 1
+)
+
+REM Success — relaunch
 start "" "{exe_path}"
 
 REM Cleanup
 rmdir /S /Q "{extract_dir}" >NUL 2>&1
+rmdir /S /Q "{backup_dir}" >NUL 2>&1
 del "%~f0"
 """, encoding="ascii")
 

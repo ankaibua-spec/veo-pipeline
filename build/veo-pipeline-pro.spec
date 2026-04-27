@@ -34,6 +34,8 @@ a = Analysis(
         "PyQt6.QtGui",
         "PyQt6.QtWidgets",
         # Legacy tab modules (loaded dynamically)
+        "qt_ui.ui",
+        "qt_ui_modern",
         "qt_ui_modern.theme",
         "qt_ui_modern.styles",
         "qt_ui_modern.main_window",
@@ -118,7 +120,12 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=[
+        # Skip UPX on these — Windows Defender flags packed Qt/Python DLLs
+        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll", "Qt6Svg.dll",
+        "python3*.dll", "vcruntime*.dll", "msvcp*.dll", "ucrtbase.dll",
+        "api-ms-win-*.dll",
+    ],
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -136,6 +143,10 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=[
+        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll", "Qt6Svg.dll",
+        "python3*.dll", "vcruntime*.dll", "msvcp*.dll", "ucrtbase.dll",
+        "api-ms-win-*.dll",
+    ],
     name="VEO_Pipeline_Pro",
 )

@@ -16,9 +16,29 @@ from . import theme as t
 LICENSE_FILE = Path.home() / ".veo_pipeline" / "license.json"
 
 
+def _windows_machine_guid() -> str | None:
+    """Read Windows MachineGuid from registry — stable across reboots/NIC changes."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Cryptography",
+            0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY
+        )
+        guid, _ = winreg.QueryValueEx(key, "MachineGuid")
+        winreg.CloseKey(key)
+        return str(guid)
+    except Exception:
+        return None
+
+
 def machine_id() -> str:
-    """Stable per-machine ID. Hash of MAC + node + system."""
-    raw = f"{uuid.getnode()}|{platform.node()}|{platform.system()}|{platform.machine()}"
+    """Stable per-machine ID. Prefer Windows MachineGuid, fallback to node+system."""
+    win_guid = _windows_machine_guid()
+    if win_guid:
+        raw = f"{win_guid}|{platform.system()}"
+    else:
+        raw = f"{uuid.getnode()}|{platform.node()}|{platform.system()}|{platform.machine()}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24].upper()
 
 
@@ -32,8 +52,12 @@ def load_license() -> dict | None:
 
 
 def save_license(key: str, mid: str):
+    """Atomic write: tmp file + rename."""
     LICENSE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    LICENSE_FILE.write_text(json.dumps({"key": key, "machine_id": mid, "activated": True}, indent=2))
+    tmp = LICENSE_FILE.with_suffix(".tmp")
+    payload = json.dumps({"key": key, "machine_id": mid, "activated": True}, indent=2)
+    tmp.write_text(payload)
+    tmp.replace(LICENSE_FILE)  # atomic on POSIX + NTFS
 
 
 def is_licensed() -> bool:
