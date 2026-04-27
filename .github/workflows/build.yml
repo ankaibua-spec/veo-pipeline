@@ -22,7 +22,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller PyQt6 playwright requests urllib3 watchdog google-api-python-client google-auth google-auth-oauthlib
 
-      - name: Build exe (onedir for fast startup)
+      - name: Install UPX (smaller binaries)
+        run: |
+          choco install upx -y --no-progress
+
+      - name: Build exe (onedir + UPX)
         run: |
           pyinstaller --clean --distpath dist --workpath build/work build/veo-pipeline-pro.spec
 
