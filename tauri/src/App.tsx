@@ -166,7 +166,7 @@ const Dashboard = () => (
         </section>
 
         <section className="bg-gradient-to-br from-blue-600/20 to-[#1F1F1F] border border-[#404040] rounded-xl p-6 min-h-[160px] flex flex-col justify-end">
-          <span className="text-[10px] font-mono text-blue-400 mb-1">v6.0.0</span>
+          <span className="text-[10px] font-mono text-blue-400 mb-1">v6.0.1</span>
           <h3 className="text-lg font-bold text-white tracking-tight">Engine Ready</h3>
         </section>
       </div>
@@ -686,7 +686,7 @@ export default function App() {
         {/* Footer info bar */}
         <footer className="h-8 border-t border-[#404040] bg-[#1c2026] flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] font-mono text-[#707070] uppercase tracking-widest">
-            VEO Pipeline Pro v6.0.0 | System Status: <span className="text-emerald-500 font-bold">Operational</span>
+            VEO Pipeline Pro v6.0.1 | System Status: <span className="text-emerald-500 font-bold">Operational</span>
           </div>
           <div className="flex gap-6 text-[10px] font-mono text-[#707070] uppercase tracking-widest">
             <button className="hover:text-blue-400 transition-colors">Support</button>
