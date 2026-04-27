@@ -4,7 +4,7 @@ from __future__ import annotations
 # Brand
 APP_NAME = "VEO Pipeline Pro"
 APP_TAGLINE = "Professional AI Video Generation Suite"
-APP_VERSION = "5.0.6"
+APP_VERSION = "5.0.7"
 APP_BUILD = "Commercial"
 AUTHOR = "Truong Hoa"
 AUTHOR_ZALO = "0345431884"

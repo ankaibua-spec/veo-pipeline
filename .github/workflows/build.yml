@@ -29,7 +29,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller PyQt6 playwright requests urllib3 watchdog google-api-python-client google-auth google-auth-oauthlib imageio imageio-ffmpeg pillow opencv-python numpy moviepy
+          pip install pyinstaller PyQt6 playwright requests urllib3 watchdog google-api-python-client google-auth google-auth-oauthlib imageio-ffmpeg
 
       - name: Install UPX (smaller binaries)
         run: |

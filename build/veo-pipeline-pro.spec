@@ -27,7 +27,13 @@ a = Analysis(
         "PyQt6.QtSerialPort", "PyQt6.QtWebEngineCore", "PyQt6.QtWebEngineWidgets",
         "PyQt6.QtQuick", "PyQt6.QtQuick3D", "PyQt6.QtQml",
         "PyQt6.QtCharts", "PyQt6.QtDataVisualization",
-        "matplotlib", "numpy.tests", "scipy", "pandas", "IPython",
+        # Heavy unused deps from accidental install
+        "matplotlib", "numpy", "scipy", "pandas", "IPython",
+        "cv2", "PIL", "Pillow",
+        "moviepy", "imageio.plugins.bsdf", "imageio.plugins.dicom",
+        "imageio.plugins.feisem", "imageio.plugins.fits", "imageio.plugins.gdal",
+        "imageio.plugins.lytro", "imageio.plugins.npz", "imageio.plugins.simpleitk",
+        "imageio.plugins.spe", "imageio.plugins.swf", "imageio.plugins.tifffile",
     ],
     hiddenimports=[
         "PyQt6.QtCore",
@@ -36,11 +42,8 @@ a = Analysis(
         # Legacy tab modules (loaded dynamically)
         "qt_ui.ui",
         "qt_ui_modern",
-        # Legacy deps from status_panel + workflows
-        "imageio", "imageio_ffmpeg", "imageio.plugins.ffmpeg",
-        "PIL", "PIL.Image", "PIL.ImageDraw", "PIL.ImageFont",
-        "cv2", "numpy",
-        "moviepy", "moviepy.editor", "moviepy.video.io.ffmpeg_writer",
+        # Legacy deps from status_panel
+        "imageio_ffmpeg",
         "qt_ui_modern.theme",
         "qt_ui_modern.styles",
         "qt_ui_modern.main_window",
