@@ -138,13 +138,17 @@ def apply_update(zip_path: Path):
     bat.write_text(f"""@echo off
 setlocal enabledelayedexpansion
 
-REM Wait for current process to exit (exact PID match)
+REM Wait for current PID to exit (max 60s safety)
+set /a counter=0
 :waitloop
-tasklist /FI "PID eq {pid}" /NH 2>NUL | find /I "VEO_Pipeline_Pro" >NUL
+set /a counter+=1
+if %counter% gtr 60 goto :proceed
+tasklist /FI "PID eq {pid}" /NH 2>NUL | findstr /R "^[A-Za-z]" >NUL
 if "%errorlevel%"=="0" (
     timeout /t 1 /nobreak >NUL
     goto waitloop
 )
+:proceed
 
 REM Remove old backup
 if exist "{backup_dir}" rmdir /S /Q "{backup_dir}" >NUL 2>&1

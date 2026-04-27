@@ -172,7 +172,16 @@ def _check_update_async(win, app):
     try:
         from qt_ui_modern.auto_update import check_and_prompt
         if check_and_prompt(win):
-            app.quit()
+            # Force kill — tray closeEvent override would block app.quit()
+            import os as _os
+            print("[update] applying — force exit for swap script")
+            # Restore original close + close window
+            try:
+                from PyQt6.QtCore import QTimer as _QT
+                # Give batch script 200ms to start before we exit
+                _QT.singleShot(200, lambda: _os._exit(0))
+            except Exception:
+                _os._exit(0)
     except Exception as e:
         print(f"[update] {e}")
 
