@@ -29,8 +29,9 @@ def main():
     from qt_ui_modern.onboarding import needs_onboarding, mark_onboarded, OnboardingWizard
     from qt_ui_modern.tray import install_tray
     from qt_ui_modern.bulk_login import BulkLoginDialog
-    # Use original MainWindow — has working Generate / Stop / View buttons + tab layout
-    from qt_ui.ui import MainWindow, AppConfig
+    # Use original top-level ui.py (real source). qt_ui/ subfolder contains
+    # decompiled bytecode disassembly, not valid Python — avoid.
+    from ui import MainWindow, AppConfig
 
     app = QApplication(sys.argv)
     app.setApplicationName(t.APP_NAME)

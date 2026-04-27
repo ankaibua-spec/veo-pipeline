@@ -40,8 +40,7 @@ a = Analysis(
         "PyQt6.QtGui",
         "PyQt6.QtWidgets",
         # Legacy tab modules (loaded dynamically)
-        "qt_ui.ui",
-        "qt_ui_modern",
+        "ui", "qt_ui_modern",
         # Legacy deps from status_panel
         "imageio_ffmpeg",
         "qt_ui_modern.theme",
