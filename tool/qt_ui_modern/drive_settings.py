@@ -162,12 +162,19 @@ class DriveSettingsDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
+        upload_btn = QPushButton("⬆ Upload Now")
+        upload_btn.setObjectName("Accent")
+        upload_btn.setToolTip("Scan output folder + upload all *.mp4 to Drive immediately")
+        upload_btn.clicked.connect(self._upload_now)
+        btn_row.addWidget(upload_btn)
+
+        btn_row.addStretch()
+
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
         save_btn = QPushButton("Save")
         save_btn.setObjectName("primary")
         save_btn.clicked.connect(self._save)
-        btn_row.addStretch()
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(save_btn)
         layout.addLayout(btn_row)
@@ -239,6 +246,91 @@ class DriveSettingsDialog(QDialog):
 
         QMessageBox.information(self, "Import OK",
             f"Drive credentials imported.\nAccount: {data.get('email','?')}\nFolder: {data.get('drive_id','?')[:30]}...\n\nClick Save to apply.")
+
+    def _upload_now(self):
+        """One-shot upload: scan output_dir, push all *.mp4 to Drive folder."""
+        from PyQt6.QtWidgets import QProgressDialog, QApplication
+        out = self.output_dir.text().strip()
+        fid = self.drive_id.text().strip()
+        if not out or not Path(out).exists():
+            QMessageBox.warning(self, "No folder", "Set output folder first (or click Auto-detect).")
+            return
+        if not fid:
+            QMessageBox.warning(self, "No Drive folder", "Set Google Drive folder ID first.")
+            return
+        if not CRED_FILE.exists():
+            QMessageBox.warning(self, "No credentials", "Configure Drive credentials first (Browse / Import / Cloud Console).")
+            return
+
+        files = sorted(Path(out).glob("*.mp4"))
+        if not files:
+            QMessageBox.information(self, "Nothing to upload", f"No *.mp4 found in:\n{out}")
+            return
+
+        # Save current settings so _drive_upload + creds loader can read them
+        self._save_silent()
+
+        from .drive_sync import _drive_upload, _load_db, _save_db, _file_hash
+        db = _load_db()
+        skipped = 0
+
+        pd = QProgressDialog(f"Uploading 0 / {len(files)}...", "Cancel", 0, len(files), self)
+        pd.setWindowTitle("Drive Upload")
+        pd.setMinimumDuration(0)
+        pd.setValue(0)
+        pd.show()
+
+        ok = 0
+        fail = 0
+        for i, p in enumerate(files):
+            if pd.wasCanceled():
+                break
+            pd.setLabelText(f"Uploading {i+1} / {len(files)}: {p.name}")
+            QApplication.processEvents()
+
+            h = _file_hash(p)
+            if h in db:
+                skipped += 1
+                pd.setValue(i + 1)
+                continue
+
+            drive_id = _drive_upload(p, fid)
+            if drive_id:
+                ok += 1
+                db[h] = {
+                    "original": p.name,
+                    "renamed": p.name,
+                    "size_mb": round(p.stat().st_size / 1024 / 1024, 1),
+                    "drive_id": drive_id,
+                    "ts": __import__("datetime").datetime.now().isoformat(),
+                }
+                _save_db(db)
+            else:
+                fail += 1
+            pd.setValue(i + 1)
+            QApplication.processEvents()
+
+        pd.close()
+        QMessageBox.information(self, "Upload done",
+            f"✅ Uploaded: {ok}\n⏭ Skipped (already): {skipped}\n❌ Failed: {fail}\n\nFolder: {fid}")
+
+    def _save_silent(self):
+        """Save config without showing the 'Saved' popup."""
+        cfg = {
+            "output_dir": self.output_dir.text().strip(),
+            "drive_id": self.drive_id.text().strip(),
+            "tg_bot": self.tg_bot.text().strip(),
+            "tg_chat": self.tg_chat.text().strip(),
+            "auto_update": self.auto_update.isChecked(),
+        }
+        cred_text = self.cred_path.text().strip()
+        if cred_text and not cred_text.endswith("(already configured)") and Path(cred_text).exists():
+            try:
+                CRED_FILE.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(cred_text, CRED_FILE)
+            except Exception:
+                pass
+        save_config(cfg)
 
     def _save(self):
         cfg = {
