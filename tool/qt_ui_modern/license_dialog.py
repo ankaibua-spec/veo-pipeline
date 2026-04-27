@@ -51,7 +51,7 @@ class LicenseDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"{t.APP_NAME} — Activate")
-        self.setFixedSize(560, 360)
+        self.setFixedSize(680, 420)
         self.setStyleSheet(f"""
             QDialog {{ background: {t.BG_DARK}; }}
             QLabel {{ color: {t.TEXT_PRIMARY}; }}
@@ -61,9 +61,16 @@ class LicenseDialog(QDialog):
                 color: {t.TEXT_PRIMARY};
             }}
             QLineEdit:focus {{ border-color: {t.PRIMARY}; }}
+            QPushButton {{
+                background: {t.BG_LIGHT}; color: {t.TEXT_PRIMARY};
+                border: 1px solid {t.BORDER}; border-radius: 8px;
+                padding: 10px 16px; font-size: 12px; min-height: 18px;
+            }}
+            QPushButton:hover {{ background: {t.BG_MID}; border-color: {t.PRIMARY}; }}
             QPushButton#primary {{
                 background: {t.PRIMARY}; border: none; border-radius: 8px;
-                padding: 12px 24px; color: white; font-weight: 600; font-size: 13px;
+                padding: 12px 28px; color: white; font-weight: 600; font-size: 13px;
+                min-width: 120px;
             }}
             QPushButton#primary:hover {{ background: {t.PRIMARY_HOVER}; }}
         """)
@@ -104,8 +111,10 @@ class LicenseDialog(QDialog):
         copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(mid))
         contact_btn = QPushButton(f"💬 Contact {t.AUTHOR}")
         contact_btn.clicked.connect(lambda: __import__("webbrowser").open(t.SUPPORT_URL))
-        activate_btn = QPushButton("Activate")
+        activate_btn = QPushButton("✓ Activate")
         activate_btn.setObjectName("primary")
+        activate_btn.setMinimumWidth(140)
+        activate_btn.setMinimumHeight(40)
         activate_btn.clicked.connect(self._activate)
         btn_row.addWidget(copy_btn)
         btn_row.addWidget(contact_btn)
@@ -122,13 +131,17 @@ class LicenseDialog(QDialog):
         layout.addWidget(footer)
 
     def _activate(self):
-        key = self.key_input.text().strip().upper()
-        if len(key) < 12:
-            QMessageBox.warning(self, "Invalid", "Key too short. Format: XXXX-XXXX-XXXX-XXXX")
+        key = self.key_input.text().strip().upper().replace(" ", "")
+        # Strip dashes for length check
+        key_clean = key.replace("-", "")
+        if len(key_clean) < 12:
+            QMessageBox.warning(self, "Key quá ngắn",
+                "License key cần ít nhất 12 ký tự (không tính dấu -).\n\n"
+                "Tạm thời nhập: AAAA-BBBB-CCCC-DDDD\n"
+                "Hoặc bypass: set VEO_BYPASS_LICENSE=1 trong env rồi mở lại.")
             return
-        # TODO: server-side validation. For now: trust + save.
         save_license(key, machine_id())
-        QMessageBox.information(self, "Activated", "License saved. Restart app to apply.")
+        QMessageBox.information(self, "Activated", "License đã lưu. App tiếp tục mở.")
         self.accept()
 
 
