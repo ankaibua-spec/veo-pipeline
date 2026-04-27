@@ -22,13 +22,15 @@ def main():
         print("ERROR: PyQt6 not installed. Run: pip install PyQt6")
         sys.exit(1)
 
-    from qt_ui_modern.main_window import MainWindow
     from qt_ui_modern.styles import GLOBAL_QSS
     from qt_ui_modern.splash import show_splash
     from qt_ui_modern import theme as t
     from qt_ui_modern.license_dialog import is_licensed, LicenseDialog
     from qt_ui_modern.onboarding import needs_onboarding, mark_onboarded, OnboardingWizard
     from qt_ui_modern.tray import install_tray
+    from qt_ui_modern.bulk_login import BulkLoginDialog
+    # Use original MainWindow — has working Generate / Stop / View buttons + tab layout
+    from qt_ui.ui import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName(t.APP_NAME)
@@ -51,8 +53,22 @@ def main():
     splash = show_splash()
     app.processEvents()
 
-    # Build window while splash visible
+    # Build window while splash visible (original — has working buttons)
     win = MainWindow()
+    win.setWindowTitle(f"{t.APP_NAME} v{t.APP_VERSION}")
+
+    # Add Bulk Login button to original UI (keep Fluent feature)
+    try:
+        from PyQt6.QtWidgets import QPushButton
+        bulk_btn = QPushButton("👥 Bulk Login")
+        bulk_btn.setObjectName("Accent")
+        bulk_btn.clicked.connect(lambda: BulkLoginDialog(win).exec())
+        # Inject into menubar or toolbar if present
+        if hasattr(win, "menuBar") and win.menuBar() is not None:
+            win.menuBar().setCornerWidget(bulk_btn)
+    except Exception as e:
+        print(f"[bulk] inject fail: {e}")
+
     app.processEvents()
 
     install_tray(win, app)
