@@ -25,16 +25,16 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from .status_panel import StatusPanel
-from .tab_text_to_video import TextToVideoTab
-from .tab_image_to_video import ImageToVideoTab
-from .tab_character_sync import CharacterSyncTab
-from .tab_create_image import CreateImageTab
-from .tab_create_image import CreateImageFromPromptTab
-from .tab_idea_to_video import IdeaToVideoTab
-from .popup_theme import install_messagebox_theme
-from .tab_settings import SettingsTab
-from .tab_grok_settings import GrokSettingsTab
+from status_panel import StatusPanel
+from tab_text_to_video import TextToVideoTab
+from tab_image_to_video import ImageToVideoTab
+from tab_character_sync import CharacterSyncTab
+from tab_create_image import CreateImageTab
+from tab_create_image import CreateImageFromPromptTab
+from tab_idea_to_video import IdeaToVideoTab
+from popup_theme import install_messagebox_theme
+from tab_settings import SettingsTab
+from tab_grok_settings import GrokSettingsTab
 from branding_config import WINDOW_TITLE
 from settings_manager import BASE_DIR, get_icon_path
 from worker_run_workflow import WorkflowRunWorker, WorkflowQueueItem

@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .tab_character_sync import CharacterSyncTab
-from .tab_text_to_video import PromptEditor
+from tab_character_sync import CharacterSyncTab
+from tab_text_to_video import PromptEditor
 
 
 class CreateImageFromPromptTab(QWidget):

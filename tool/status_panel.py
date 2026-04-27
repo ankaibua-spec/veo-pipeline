@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtGui import QIcon
 
-from .status_help_view import build_status_help_view, get_status_help_file_path
+from status_help_view import build_status_help_view, get_status_help_file_path
 from A_workflow_text_to_video import TextToVideoWorkflow
 from worker_run_workflow_grok import GrokImageToVideoWorker, GrokTextToVideoWorker
 from settings_manager import SettingsManager, WORKFLOWS_DIR, BASE_DIR, DATA_GENERAL_DIR, get_icon_path

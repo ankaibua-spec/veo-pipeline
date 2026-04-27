@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .tab_text_to_video import PromptEditor
+from tab_text_to_video import PromptEditor
 from settings_manager import get_icon_path
 
 
