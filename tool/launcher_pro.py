@@ -30,7 +30,7 @@ def main():
     from qt_ui_modern.tray import install_tray
     from qt_ui_modern.bulk_login import BulkLoginDialog
     # Use original MainWindow — has working Generate / Stop / View buttons + tab layout
-    from qt_ui.ui import MainWindow
+    from qt_ui.ui import MainWindow, AppConfig
 
     app = QApplication(sys.argv)
     app.setApplicationName(t.APP_NAME)
@@ -66,7 +66,8 @@ def main():
     app.processEvents()
 
     # Build window while splash visible (original — has working buttons)
-    win = MainWindow()
+    cfg = AppConfig.load()
+    win = MainWindow(cfg)
     win.setWindowTitle(f"{t.APP_NAME} v{t.APP_VERSION}")
 
     # Add Bulk Login button to original UI (keep Fluent feature)
