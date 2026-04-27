@@ -37,26 +37,26 @@ def main():
     app.setApplicationName(t.APP_NAME)
     app.setApplicationVersion(t.APP_VERSION)
 
-    # Force dark Fusion palette (overrides default light theme)
+    # Force dark Fusion palette using Stitch tokens (overrides default light theme)
     from PyQt6.QtGui import QPalette, QColor
     app.setStyle("Fusion")
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor("#1F1F1F"))
-    palette.setColor(QPalette.ColorRole.WindowText, QColor("#FFFFFF"))
-    palette.setColor(QPalette.ColorRole.Base, QColor("#252525"))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#2B2B2B"))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#252525"))
-    palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#FFFFFF"))
-    palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
-    palette.setColor(QPalette.ColorRole.Button, QColor("#3A3A3A"))
-    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
-    palette.setColor(QPalette.ColorRole.BrightText, QColor("#FF6B35"))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor("#0078D4"))
+    palette.setColor(QPalette.ColorRole.Window, QColor(t.BG_DARK))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(t.TEXT_PRIMARY))
+    palette.setColor(QPalette.ColorRole.Base, QColor(t.BG_CONTAINER))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(t.BG_CONTAINER_LOW))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(t.BG_CONTAINER_HIGH))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(t.TEXT_PRIMARY))
+    palette.setColor(QPalette.ColorRole.Text, QColor(t.TEXT_PRIMARY))
+    palette.setColor(QPalette.ColorRole.Button, QColor(t.BG_CONTAINER))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor(t.TEXT_PRIMARY))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor(t.ACCENT))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(t.PRIMARY_ACCENT))
     palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
-    palette.setColor(QPalette.ColorRole.Link, QColor("#0078D4"))
-    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#707070"))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#707070"))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#707070"))
+    palette.setColor(QPalette.ColorRole.Link, QColor(t.PRIMARY))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(t.TEXT_MUTED))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(t.TEXT_MUTED))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(t.TEXT_MUTED))
     app.setPalette(palette)
 
     # Stylesheet on top of palette — for fluent chrome
@@ -95,32 +95,34 @@ def main():
     win = MainWindow(cfg)
     win.setWindowTitle(f"{t.APP_NAME} v{t.APP_VERSION}")
 
-    # Re-apply our dark QSS AFTER MainWindow built (overrides any inline light styles)
-    win.setStyleSheet(GLOBAL_QSS + """
-    QWidget { color: #FFFFFF; }
-    QLabel { color: #FFFFFF; background: transparent; }
-    QMainWindow, QWidget#AppRoot { background: #1F1F1F; }
-    QTabWidget::pane { background: #1F1F1F; border: 1px solid #404040; }
-    QTabBar::tab { background: #2B2B2B; color: #A0A0A0; padding: 8px 16px; }
-    QTabBar::tab:selected { background: #0078D4; color: white; }
-    QPushButton { background: #3A3A3A; color: #FFFFFF; border: 1px solid #404040; border-radius: 6px; padding: 6px 14px; }
-    QPushButton:hover { background: #2B2B2B; border-color: #0078D4; }
-    QPushButton#Accent { background: #FF6B35; color: white; border-color: #FF6B35; font-weight: 600; }
-    QPushButton#Accent:hover { background: #FF8255; }
-    QPushButton#Danger { background: #EF4444; color: white; border-color: #EF4444; }
-    QPushButton#Warning { background: #F59E0B; color: white; border-color: #F59E0B; }
-    QPushButton#Orange { background: #FF6B35; color: white; border-color: #FF6B35; }
-    QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {
-        background: #3A3A3A; color: #FFFFFF; border: 1px solid #404040;
-        border-radius: 6px; padding: 6px 10px;
-    }
-    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus { border-color: #0078D4; }
-    QGroupBox { color: #FFFFFF; border: 1px solid #404040; border-radius: 8px; margin-top: 12px; padding-top: 14px; }
-    QGroupBox::title { color: #FFFFFF; subcontrol-origin: margin; left: 12px; padding: 0 6px; }
-    QTableView, QListView, QTreeView { background: #252525; color: #FFFFFF; gridline-color: #404040; selection-background-color: #0078D4; }
-    QHeaderView::section { background: #2B2B2B; color: #A0A0A0; border: none; border-bottom: 1px solid #404040; padding: 6px; }
-    QFrame { background: transparent; }
-    QScrollArea { background: transparent; border: none; }
+    # Re-apply Stitch QSS AFTER MainWindow built (overrides any inline light styles in tabs)
+    win.setStyleSheet(GLOBAL_QSS + f"""
+    QWidget {{ color: {t.TEXT_PRIMARY}; }}
+    QLabel {{ color: {t.TEXT_PRIMARY}; background: transparent; }}
+    QMainWindow, QWidget#AppRoot {{ background: {t.BG_DARK}; }}
+    QTabWidget::pane {{ background: {t.BG_CONTAINER}; border: 1px solid {t.BORDER}; border-radius: {t.RADIUS_MD}px; }}
+    QTabBar::tab {{ background: transparent; color: {t.TEXT_MUTED}; padding: 10px 20px; border: none; }}
+    QTabBar::tab:hover {{ color: {t.TEXT_PRIMARY}; }}
+    QTabBar::tab:selected {{ color: {t.TEXT_PRIMARY}; font-weight: 600; border-bottom: 2px solid {t.PRIMARY}; }}
+    QPushButton {{ background: {t.BG_CONTAINER}; color: {t.TEXT_PRIMARY}; border: 1px solid {t.BORDER}; border-radius: 8px; padding: 8px 16px; }}
+    QPushButton:hover {{ background: {t.BG_CONTAINER_HIGH}; border-color: {t.BORDER_VARIANT}; }}
+    QPushButton#Accent {{ background: {t.ACCENT}; color: white; border-color: {t.ACCENT}; font-weight: 600; }}
+    QPushButton#Accent:hover {{ background: #FF8159; border-color: #FF8159; }}
+    QPushButton#Danger {{ background: rgba(239,68,68,0.15); color: {t.ERROR}; border-color: rgba(239,68,68,0.4); }}
+    QPushButton#Warning {{ background: rgba(250,204,21,0.15); color: {t.WARNING}; border-color: rgba(250,204,21,0.4); }}
+    QPushButton#Orange {{ background: {t.ACCENT}; color: white; border-color: {t.ACCENT}; font-weight: 600; }}
+    QPushButton#Orange:hover {{ background: #FF8159; }}
+    QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {{
+        background: {t.BG_CONTAINER_LOW}; color: {t.TEXT_PRIMARY}; border: 1px solid {t.BORDER};
+        border-radius: 8px; padding: 8px 12px;
+    }}
+    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{ border-color: {t.PRIMARY}; }}
+    QGroupBox {{ color: {t.TEXT_PRIMARY}; border: 1px solid {t.BORDER}; border-radius: 12px; margin-top: 12px; padding-top: 14px; background: {t.BG_CONTAINER}; }}
+    QGroupBox::title {{ color: {t.TEXT_SECONDARY}; subcontrol-origin: margin; left: 12px; padding: 0 6px; font-weight: 600; }}
+    QTableView, QListView, QTreeView {{ background: {t.BG_CONTAINER}; color: {t.TEXT_PRIMARY}; gridline-color: {t.BORDER}; selection-background-color: {t.BG_CONTAINER_HIGH}; selection-color: {t.TEXT_PRIMARY}; alternate-background-color: {t.BG_CONTAINER_LOW}; }}
+    QHeaderView::section {{ background: {t.BG_CONTAINER_LOW}; color: {t.TEXT_MUTED}; border: none; border-bottom: 1px solid {t.BORDER}; padding: 8px 12px; font-weight: 600; }}
+    QFrame {{ background: transparent; }}
+    QScrollArea {{ background: transparent; border: none; }}
     """)
 
     # Add toolbar buttons: Bulk Login + Drive Settings (Fluent features)
