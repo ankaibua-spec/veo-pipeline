@@ -40,6 +40,8 @@ LICENSE_SECRET = _SECRET_RAW.encode() if _SECRET_RAW else None  # type: ignore[u
 def expected_key(mid: str) -> str:
     """Deterministic per-machine key. Caller (dev) generates this offline and
     sends to the user; user pastes it into the dialog."""
+    if LICENSE_SECRET is None:
+        return ""  # secret khong embedded — khong tinh duoc
     digest = hmac.new(LICENSE_SECRET, mid.encode(), hashlib.sha256).hexdigest().upper()
     short = digest[:16]
     return "-".join(short[i:i + 4] for i in range(0, 16, 4))
@@ -104,6 +106,10 @@ def is_licensed() -> bool:
     """Validate license: stored key must match HMAC(secret, current machine_id).
     Bypass only via dev marker file + env (see _bypass_enabled)."""
     if _bypass_enabled():
+        return True
+    if LICENSE_SECRET is None:
+        # Build khong embed secret (server-side keygen pending v5.5+).
+        # App boot mo che do open — khong block user.
         return True
     lic = load_license()
     if not lic or not lic.get("activated"):
@@ -205,6 +211,15 @@ class LicenseDialog(QDialog):
         if "-" not in key and len(key) == 16:
             key = "-".join(key[i:i + 4] for i in range(0, 16, 4))
         mid = machine_id()
+        if LICENSE_SECRET is None:
+            QMessageBox.information(
+                self,
+                "Open mode",
+                "Build hien tai chua co license secret. App da mo o che do open.\n"
+                "License check se kich hoat o ban v5.5+ (server-side keygen).",
+            )
+            self.accept()
+            return
         if not hmac.compare_digest(key, expected_key(mid)):
             QMessageBox.warning(
                 self,
