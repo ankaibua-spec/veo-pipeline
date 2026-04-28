@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 
 #[derive(Serialize, Deserialize)]
 struct GenRequest {
@@ -19,36 +18,39 @@ struct GenResponse {
 
 /// Spawn Python sidecar to run gen workflow.
 /// Sidecar binary expected at resources/python_sidecar.exe.
+/// TODO: implement real sidecar spawn before shipping.
 #[tauri::command]
 fn gen_video(req: GenRequest) -> Result<GenResponse, String> {
-    // For now: stub. Real impl spawns python_sidecar.exe with JSON args.
     println!("[gen_video] prompt={} model={}", req.prompt, req.model);
-    Ok(GenResponse {
-        success: true,
-        message: format!("Stub: would generate '{}' with {}", req.prompt, req.model),
-        video_path: None,
-    })
+    Err("gen_video not implemented in this build".into())
 }
 
 #[tauri::command]
 fn bulk_login(accounts: Vec<String>) -> Result<String, String> {
+    // Gioi han toi da 200 tai khoan de tranh qua tai
+    if accounts.len() > 200 {
+        return Err(format!(
+            "Too many accounts: {} (max 200)",
+            accounts.len()
+        ));
+    }
     println!("[bulk_login] {} accounts", accounts.len());
-    Ok(format!("Queued {} accounts for login", accounts.len()))
+    Err("bulk_login not implemented".into())
 }
 
 #[tauri::command]
 fn open_output_folder() -> Result<(), String> {
-    // Would open file explorer at output dir
-    Ok(())
+    Err("open_output_folder not implemented".into())
 }
 
 #[tauri::command]
 fn get_app_info() -> serde_json::Value {
+    // Doc tu env var khi build; tranh hardcode PII trong source code
+    let owner = option_env!("VEO_OWNER_NAME").unwrap_or("");
     serde_json::json!({
-        "name": "VEO Pipeline Pro",
+        "name": env!("CARGO_PKG_NAME"),
         "version": env!("CARGO_PKG_VERSION"),
-        "author": "Truong Hoa",
-        "zalo": "0345431884"
+        "owner": owner,
     })
 }
 

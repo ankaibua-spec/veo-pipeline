@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import os
 import re
@@ -11,6 +12,11 @@ from pathlib import Path
 from datetime import datetime
 
 import imageio_ffmpeg
+
+# Pool dung chung de build thumbnail – gioi han 3 ffmpeg dong thoi, tranh OOM
+_THUMB_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=3, thread_name_prefix="thumb"
+)
 
 from PyQt6.QtCore import pyqtSignal, Qt, QUrl, QTimer, QSize, QThread
 from PyQt6.QtGui import QDesktopServices, QPainter, QColor, QBrush, QPixmap
@@ -267,6 +273,10 @@ class StatusPanel(QWidget):
         self._status_loaded = False
         self._thumb_jobs_inflight: set[str] = set()
         self._thumb_attempted_mtime: dict[str, float] = {}
+        # Cache tra cuu hang theo duong dan video – O(1) lookup cho thumbnail signal
+        self._row_by_video_path: dict[str, int] = {}
+        # Cache so hang dang cho hoan thanh – tranh scan O(rows) moi lan log
+        self._waiting_count_cache: int | None = None
         self.thumbnailReady.connect(self._on_thumbnail_ready)
 
         self._cb_off = _icon("checkbox-unchecked.png")
@@ -422,6 +432,8 @@ class StatusPanel(QWidget):
         self._run_log.setReadOnly(True)
         self._run_log.setMinimumHeight(78)
         self._run_log.setStyleSheet("background:#0E0E13; color:#e5e2e1; border:1px solid #2a2a2a;")
+        # Gioi han 2000 dong de tranh buffer phinh qua dem
+        self._run_log.setMaximumBlockCount(2000)
         log_layout.addWidget(self._run_log)
 
         self._body_splitter.addWidget(self._log_group)
@@ -580,12 +592,16 @@ class StatusPanel(QWidget):
         self._append_run_log(message)
 
     def _count_waiting_completion_on_table(self) -> int:
-        # Theo yêu cầu: không tính video đang chờ tạo (PENDING).
+        # Theo yeu cau: khong tinh video dang cho tao (PENDING).
+        # Dung cache de tranh scan O(rows) moi lan append log.
+        if self._waiting_count_cache is not None:
+            return self._waiting_count_cache
         count = 0
         for r in range(self.table.rowCount()):
             code = self._status_code(r)
             if code in {"TOKEN", "REQUESTED", "ACTIVE", "DOWNLOADING"}:
                 count += 1
+        self._waiting_count_cache = count
         return count
 
     def _build_help_view(self) -> QWidget:
@@ -1598,6 +1614,22 @@ class StatusPanel(QWidget):
         label.setPixmap(QPixmap())
         label.setText("")
 
+    def _rebuild_row_video_cache(self) -> None:
+        """Xay lai cache nguoc video_path -> row sau khi table thay doi nhieu."""
+        self._row_by_video_path.clear()
+        for r in range(self.table.rowCount()):
+            item = self.table.item(int(r), self.COL_VIDEO)
+            if item is None:
+                continue
+            p = str(item.data(Qt.ItemDataRole.UserRole) or "").strip()
+            if not p:
+                continue
+            try:
+                key = os.path.normcase(os.path.normpath(p))
+            except Exception:
+                key = p
+            self._row_by_video_path[key] = int(r)
+
     def _on_thumbnail_ready(self, src_video_path: str, thumb_path: str) -> None:
         src = str(src_video_path or "").strip()
         thumb = str(thumb_path or "").strip()
@@ -1608,31 +1640,28 @@ class StatusPanel(QWidget):
         except Exception:
             src_norm = src
 
-        for row in range(self.table.rowCount()):
-            item = self.table.item(int(row), self.COL_VIDEO)
-            if item is None:
-                continue
-            selected_path = str(item.data(Qt.ItemDataRole.UserRole) or "").strip()
-            if not selected_path:
-                continue
-            try:
-                selected_norm = os.path.normcase(os.path.normpath(selected_path))
-            except Exception:
-                selected_norm = selected_path
-            if selected_norm != src_norm:
-                continue
+        # O(1) lookup voi cache; rebuild neu miss (hang moi them vao sau khi cache cu)
+        row = self._row_by_video_path.get(src_norm)
+        if row is None:
+            self._rebuild_row_video_cache()
+            row = self._row_by_video_path.get(src_norm)
+        if row is None:
+            return
 
-            try:
-                selected_idx = int(item.data(Qt.ItemDataRole.UserRole + 2) or 1)
-            except Exception:
-                selected_idx = 1
-            try:
-                preview_map = dict(item.data(Qt.ItemDataRole.UserRole + 4) or {})
-            except Exception:
-                preview_map = {}
-            preview_map[int(selected_idx)] = thumb
-            item.setData(Qt.ItemDataRole.UserRole + 4, preview_map)
-            self._render_image_preview(int(row), thumb)
+        item = self.table.item(int(row), self.COL_VIDEO)
+        if item is None:
+            return
+        try:
+            selected_idx = int(item.data(Qt.ItemDataRole.UserRole + 2) or 1)
+        except Exception:
+            selected_idx = 1
+        try:
+            preview_map = dict(item.data(Qt.ItemDataRole.UserRole + 4) or {})
+        except Exception:
+            preview_map = {}
+        preview_map[int(selected_idx)] = thumb
+        item.setData(Qt.ItemDataRole.UserRole + 4, preview_map)
+        self._render_image_preview(int(row), thumb)
 
     def _ensure_video_thumbnail(self, video_path: str) -> str:
         src = str(video_path or "").strip()
@@ -1707,7 +1736,8 @@ class StatusPanel(QWidget):
                         pass
 
             try:
-                threading.Thread(target=_build_thumb_async, daemon=True).start()
+                # Dung pool gioi han thay vi thread khong kiem soat
+                _THUMB_EXECUTOR.submit(_build_thumb_async)
             except Exception:
                 self._thumb_attempted_mtime[src_key] = src_mtime
                 self._thumb_jobs_inflight.discard(src_key)
@@ -1932,6 +1962,8 @@ class StatusPanel(QWidget):
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(int(row), self.COL_STATUS, item)
         item.setData(Qt.ItemDataRole.UserRole, str(code or "READY"))
+        # Vo hieu hoa cache dem hang dang cho khi trang thai thay doi
+        self._waiting_count_cache = None
 
     def _row_auto_retry_count(self, row: int) -> int:
         item = self.table.item(int(row), self.COL_STATUS)

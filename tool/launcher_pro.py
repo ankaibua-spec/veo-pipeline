@@ -212,11 +212,23 @@ def _check_update_async(win, app, *, manual: bool = False):
             from qt_ui_modern.auto_update import consume_exit_handle, signal_exit
             print("[update] applying — force exit for swap script")
             handle = consume_exit_handle()
+
             def _do_exit():
-                signal_exit(handle)   # tell .bat we are gone
-                _os._exit(0)
+                signal_exit(handle)   # thong bao .bat da thoat
+                try:
+                    from PyQt6.QtWidgets import QApplication as _QApp
+                    qapp = _QApp.instance()
+                    if qapp:
+                        qapp.quit()
+                except Exception:
+                    pass
+                import sys as _sys
+                _sys.exit(0)
+
             try:
                 from PyQt6.QtCore import QTimer as _QT
+                # Dam bao thoat sau toi da 2 giay du Qt cleanup co hang
+                _QT.singleShot(2000, lambda: _os._exit(0))
                 _QT.singleShot(200, _do_exit)
             except Exception:
                 _do_exit()

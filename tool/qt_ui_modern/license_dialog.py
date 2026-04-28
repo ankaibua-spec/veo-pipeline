@@ -21,10 +21,20 @@ LICENSE_FILE = Path.home() / ".veo_pipeline" / "license.json"
 # formatted XXXX-XXXX-XXXX-XXXX. Secret can be overridden at build time via
 # VEO_LICENSE_SECRET env (CI sets a project-specific value); otherwise a
 # deterministic compile-time default is used.
-LICENSE_SECRET = os.environ.get(
-    "VEO_LICENSE_SECRET",
-    "veo-pipeline-pro-2026:truong-hoa:0345431884",
-).encode()
+_SECRET_RAW = os.environ.get("VEO_LICENSE_SECRET", "")
+if not _SECRET_RAW:
+    try:
+        from tool.qt_ui_modern import _secret as _s  # build-injected, never committed
+        _SECRET_RAW = _s.VEO_LICENSE_SECRET
+    except Exception:
+        pass
+if not _SECRET_RAW:
+    import logging
+    logging.getLogger(__name__).warning(
+        "VEO_LICENSE_SECRET not set — app boots in unlicensed mode"
+    )
+    _SECRET_RAW = None  # type: ignore[assignment]
+LICENSE_SECRET = _SECRET_RAW.encode() if _SECRET_RAW else None  # type: ignore[union-attr]
 
 
 def expected_key(mid: str) -> str:
@@ -207,6 +217,16 @@ class LicenseDialog(QDialog):
         save_license(key, mid)
         QMessageBox.information(self, "Activated", "License đã lưu. App tiếp tục mở.")
         self.accept()
+
+
+def run_license_dialog() -> bool:
+    """Hien thi dialog kich hoat license. Tra ve True neu user kich hoat thanh cong."""
+    from PyQt6.QtWidgets import QApplication
+    import sys
+    # Dam bao co QApplication truoc khi mo dialog
+    app = QApplication.instance() or QApplication(sys.argv)
+    dlg = LicenseDialog()
+    return dlg.exec() == dlg.DialogCode.Accepted
 
 
 # Lazy import to avoid pulling QApplication at module load

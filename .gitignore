@@ -28,3 +28,17 @@ Thumbs.db
 # Output
 veo_output/
 *.mp4
+
+# secrets / state -- never commit
+data_general/config.json
+tool/chrome_user_data*/**
+tool/chrome_user_data*/
+.veo_pipeline/
+*.pyc
+__pycache__/
+
+# build-injected secret (never committed)
+tool/qt_ui_modern/_secret.py
+
+# ops roadmap (gitignored — kept in /root/veo-pipeline-ops/)
+NEEDS_USER_ACTION.md

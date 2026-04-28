@@ -8,6 +8,13 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 import requests
+from requests.adapters import HTTPAdapter
+
+# Fix #17: dung Session pool de tai su dung TLS connection, giam latency
+_HTTP = requests.Session()
+_HTTP.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
+_HTTP.mount("http://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
+
 from PyQt6.QtCore import QThread, pyqtSignal as Signal
 from PyQt6.QtWidgets import QMessageBox
 
@@ -58,6 +65,11 @@ class TextToVideoWorkflow(QThread):
 		self._state_status_logged = set()
 		self._active_prompt_ids = set()
 		self._worker_controls_lifecycle = bool(self.project_data.get("_worker_controls_lifecycle", False))
+		# Fix #5: in-memory cache cho state.json, tranh O(N^2) disk I/O
+		self._state_data_cache: dict | None = None
+		self._last_state_flush_ts = 0.0
+		# Fix #7: cache prompts de tranh doc lai test.json moi lan lookup
+		self._prompts_cache: list | None = None
 
 	def run(self):
 		try:
@@ -66,14 +78,14 @@ class TextToVideoWorkflow(QThread):
 			running_loop = None
 
 		if running_loop and running_loop.is_running():
-			self._log("⚠️  Đang có event loop chạy, chuyển workflow sang thread mới...")
+			self._log("⚠️  Dang co event loop chay, chuyen workflow sang thread moi...")
 			worker = threading.Thread(target=self._run_with_new_loop, daemon=True)
 			worker.start()
 			worker.join(timeout=60)
-			# Ensure thread is stopped and Chrome is closed
-			if worker.is_alive() and (not self._worker_controls_lifecycle):
-				self._log("⚠️ Thread workflow vẫn chưa thoát, đang force terminate và cleanup Chrome...")
-				ChromeProcessManager.close_chrome_gracefully()
+			# Fix #18: Python khong the kill thread, chi set STOP va log canh bao neu con song
+			if worker.is_alive():
+				self.STOP = 1
+				self._log("⚠️ Thread workflow chua thoat sau 60s (Python khong force kill duoc, de leak)")
 			return
 
 		self._run_with_new_loop()
@@ -144,12 +156,11 @@ class TextToVideoWorkflow(QThread):
 			pass
 
 	def _save_request_json(self, payload, prompt_id, prompt_text, flow="text_to_video"):
-		"""Lưu lịch sử request payload vào Workflows/{project}/request.json (dễ đọc, có format)."""
+		"""Fix #6: Append-only NDJSON tranh O(N^2) bytes khi doc lai toan bo file moi lan ghi."""
 		try:
 			project_dir = WORKFLOWS_DIR / str(self.project_name)
 			project_dir.mkdir(parents=True, exist_ok=True)
-			request_file = project_dir / "request.json"
-			request_data = {
+			record = {
 				"timestamp": int(time.time()),
 				"project_name": self.project_name,
 				"flow": flow,
@@ -157,37 +168,11 @@ class TextToVideoWorkflow(QThread):
 				"prompt_text": prompt_text,
 				"request": payload,
 			}
-			entries = []
-			if request_file.exists():
-				try:
-					raw_text = request_file.read_text(encoding="utf-8").strip()
-					if raw_text:
-						parsed = json.loads(raw_text)
-						if isinstance(parsed, list):
-							entries = parsed
-						elif isinstance(parsed, dict):
-							entries = [parsed]
-				except Exception:
-					try:
-						with open(request_file, "r", encoding="utf-8") as f:
-							for line in f:
-								line = line.strip()
-								if not line:
-									continue
-								try:
-									obj = json.loads(line)
-									if isinstance(obj, dict):
-										entries.append(obj)
-								except Exception:
-									pass
-					except Exception:
-						entries = []
-
-			entries.append(request_data)
-			with open(request_file, "w", encoding="utf-8") as f:
-				json.dump(entries, f, ensure_ascii=False, indent=2)
+			ndjson_file = project_dir / "request.ndjson"
+			with open(ndjson_file, "a", encoding="utf-8") as f:
+				f.write(json.dumps(record, ensure_ascii=False) + "\n")
 		except Exception as e:
-			self._log(f"⚠️ Không thể lưu request.json: {e}")
+			self._log(f"⚠️ Khong the luu request.ndjson: {e}")
 
 	def stop(self):
 		if self.STOP:
@@ -1120,19 +1105,25 @@ class TextToVideoWorkflow(QThread):
 		return state_dir / "state.json"
 
 	def _load_state_json(self):
+		# Fix #5: tra ve cache in-memory neu da co, chi doc disk lan dau
+		if self._state_data_cache is not None:
+			return self._state_data_cache
 		state_file = self._get_state_file_path()
 		if not state_file.exists():
-			return {}
+			self._state_data_cache = {}
+			return self._state_data_cache
 		try:
 			with open(state_file, "r", encoding="utf-8") as f:
-				return json.load(f)
+				self._state_data_cache = json.load(f)
 		except Exception:
-			return {}
+			self._state_data_cache = {}
+		return self._state_data_cache
 
 	def _cleanup_workflow_data(self):
-		"""✅ Xóa tất cả dữ liệu cũ trong folder Workflows/{project} NGOẠI TRỪ test.json"""
+		"""Xoa tat ca du lieu cu trong folder Workflows/{project} ngoai tru test.json"""
 		try:
-			self._save_state_json({})
+			self._state_data_cache = {}  # reset cache truoc khi ghi
+			self._save_state_json({}, force=True)
 			if self.project_data.get("_skip_clear_download"):
 				self._log("🧹 Giữ file download cũ, đã reset state.json cho phiên chạy mới")
 				return
@@ -1201,7 +1192,13 @@ class TextToVideoWorkflow(QThread):
 	def _resolve_worker_max_in_flight(self, fallback_value):
 		return max(1, int(get_max_in_flight(default_value=int(fallback_value or 1))))
 
-	def _save_state_json(self, state_data):
+	def _save_state_json(self, state_data, force=False):
+		# Fix #5: cap nhat cache truoc, debounce flush disk xuong 1Hz de giam O(N^2) writes
+		self._state_data_cache = state_data
+		now = time.time()
+		if not force and (now - self._last_state_flush_ts) < 1.0:
+			return True
+		self._last_state_flush_ts = now
 		state_file = self._get_state_file_path()
 		try:
 			with open(state_file, "w", encoding="utf-8") as f:
@@ -1473,10 +1470,10 @@ class TextToVideoWorkflow(QThread):
 				continue
 
 			response_body = response.get("body", "")
-			if not self._handle_status_response(response_body):
+			if not await self._handle_status_response(response_body):
 				self._status_poll_fail_streak += 1
 				self._log(
-					f"⚠️ Check status parse lỗi (lần {self._status_poll_fail_streak}/4)"
+					f"⚠️ Check status parse loi (lan {self._status_poll_fail_streak}/4)"
 				)
 			else:
 				self._status_poll_fail_streak = 0
@@ -1484,7 +1481,7 @@ class TextToVideoWorkflow(QThread):
 			if not await self._sleep_with_stop(5):
 				break
 
-	def _handle_status_response(self, response_body):
+	async def _handle_status_response(self, response_body):
 		try:
 			body_json = json.loads(response_body)
 			operations = body_json.get("operations", [])
@@ -1561,10 +1558,12 @@ class TextToVideoWorkflow(QThread):
 					"prompt": prompt_text,
 					"_prompt_id": prompt_id,
 				})
+				# Fix #4: chay sync requests.get qua executor tranh block asyncio loop
+				loop = asyncio.get_running_loop()
 				if video_url:
-					video_path = self._download_video(video_url, prompt_idx)
+					video_path = await loop.run_in_executor(None, self._download_video, video_url, prompt_idx)
 				if image_url:
-					image_path = self._download_image(image_url, prompt_idx)
+					image_path = await loop.run_in_executor(None, self._download_image, image_url, prompt_idx)
 
 			self._update_state_entry(
 				prompt_id,
@@ -1723,20 +1722,20 @@ class TextToVideoWorkflow(QThread):
 		video_dir.mkdir(parents=True, exist_ok=True)
 		file_path = self._build_timestamped_media_path(video_dir, str(prompt_idx), ".mp4")
 		try:
-			self._log(f"⬇️  Đang tải video: {prompt_idx}")
-			with requests.get(url, stream=True, timeout=(8, 6)) as resp:
+			self._log(f"Dang tai video: {prompt_idx}")
+			with _HTTP.get(url, stream=True, timeout=(8, 6)) as resp:
 				resp.raise_for_status()
 				with open(file_path, "wb") as f:
 					for chunk in resp.iter_content(chunk_size=1024 * 1024):
 						if self._should_stop():
-							self._log(f"🛑 Dừng tải video: {prompt_idx}")
+							self._log(f"Dung tai video: {prompt_idx}")
 							return ""
 						if chunk:
 							f.write(chunk)
-			self._log(f"⬇️  Tải video xong: {file_path}")
+			self._log(f"Tai video xong: {file_path}")
 			return str(file_path)
 		except Exception:
-			self._log("⚠️  Không tải được video")
+			self._log("Khong tai duoc video")
 			return ""
 
 	def _download_image(self, url, prompt_idx):
@@ -1748,7 +1747,7 @@ class TextToVideoWorkflow(QThread):
 		image_dir.mkdir(parents=True, exist_ok=True)
 		file_path = self._build_timestamped_media_path(image_dir, str(prompt_idx), ".jpg")
 		try:
-			with requests.get(url, stream=True, timeout=(8, 6)) as resp:
+			with _HTTP.get(url, stream=True, timeout=(8, 6)) as resp:
 				resp.raise_for_status()
 				with open(file_path, "wb") as f:
 					for chunk in resp.iter_content(chunk_size=1024 * 256):
@@ -1758,12 +1757,17 @@ class TextToVideoWorkflow(QThread):
 							f.write(chunk)
 			return str(file_path)
 		except Exception:
-			self._log("⚠️  Không tải được image")
+			self._log("Khong tai duoc image")
 			return ""
 
+	def _get_prompts_cached(self):
+		"""Fix #7: Load prompts mot lan va cache, tranh doc lai test.json moi status update."""
+		if self._prompts_cache is None:
+			self._prompts_cache = self._load_text_prompts()
+		return self._prompts_cache
+
 	def _get_prompt_text(self, prompt_id):
-		prompts = self._load_text_prompts()
-		for item in prompts:
+		for item in self._get_prompts_cached():
 			if str(item.get("id")) == str(prompt_id):
 				return item.get("prompt", "")
 		return ""

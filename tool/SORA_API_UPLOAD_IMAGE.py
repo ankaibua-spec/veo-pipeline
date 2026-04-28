@@ -1,23 +1,31 @@
 import json
 import mimetypes
+import os
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
 
 ENDPOINT = "https://sora.chatgpt.com/backend/project_y/file/upload"
 OUTPUT_FILE = Path(__file__).with_name("sora_request.json")
 
-# ================== DÁN ẢNH Ở ĐÂY ==================
-# Ưu tiên dùng đường dẫn local trên máy.
-LOCAL_IMAGE_PATH = r"D:\\Tiktok\\KOL\\KOL_new.png"
-# Nếu muốn test bằng link online thì điền IMAGE_URL.
+# Session tai su dung connection pool – giam TLS handshake lat tren moi request
+_HTTP = requests.Session()
+_HTTP.mount("https://", HTTPAdapter(pool_connections=5, pool_maxsize=10))
+_HTTP.mount("http://", HTTPAdapter(pool_connections=5, pool_maxsize=10))
+
+# ================== DAN ANH O DAY ==================
+# Uu tien dung duong dan local tren may; hoac set bien moi truong SORA_LOCAL_IMAGE.
+LOCAL_IMAGE_PATH = os.environ.get("SORA_LOCAL_IMAGE", "")
+# Neu muon test bang link online thi dien IMAGE_URL.
 IMAGE_URL = ""
 
-# Cấu hình upload (điền trực tiếp trong file, không nhập tay)
+# Cau hinh upload (dien truc tiep trong file, khong nhap tay)
 USE_CASE = "inpaint_safe"
-AUTHORIZATION_TOKEN = ""  # wiped
+# Token duoc load tu bien moi truong tai runtime – khong bao gio commit raw token
+AUTHORIZATION_TOKEN = os.environ.get("SORA_AUTH_TOKEN", "")
 COOKIE = ""
 REQUEST_TIMEOUT = 120
 # ====================================================
@@ -58,7 +66,7 @@ def _mask_authorization(auth_value: str) -> str:
 
 
 def _download_image_bytes(image_url: str, timeout: int = 60):
-    resp = requests.get(image_url, timeout=timeout)
+    resp = _HTTP.get(image_url, timeout=timeout)
     resp.raise_for_status()
     filename = _safe_filename_from_url(image_url)
     mime = _guess_mime(filename, dict(resp.headers))
@@ -118,7 +126,7 @@ def upload_image(
         "use_case": use_case,
     }
 
-    response = requests.post(
+    response = _HTTP.post(
         ENDPOINT,
         headers=headers,
         files=files,

@@ -24,7 +24,8 @@ PICKUP_DIR = Path("/opt/english-pronunciation/storage/veo_pickup")
 DB_PATH = "/opt/english-pronunciation/storage/database.db"
 TG_BOT = os.environ.get("VEO_TG_BOT", "")
 TG_CHAT = os.environ.get("VEO_TG_CHAT", "")
-LOCK = "/tmp/veo_drive_pickup.lock"
+# Fix #16: dung home dir de tranh multi-tenant DoS qua /tmp
+LOCK = str(Path.home() / ".veo_drive_pickup.lock")
 
 PICKUP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -43,6 +44,10 @@ def log(msg):
 
 
 def tg_notify(msg):
+    # Fix #7: bo qua neu token trong de tranh 404
+    # Telegram requires token in URL — see SECURITY.md, store onboarded.json with chmod 0600
+    if not TG_BOT or not TG_CHAT:
+        return
     try:
         url = f"https://api.telegram.org/bot{TG_BOT}/sendMessage"
         data = json.dumps({"chat_id": TG_CHAT, "text": msg, "parse_mode": "HTML"}).encode()
@@ -102,9 +107,30 @@ def download_drive(file_id, dest: Path):
     fh.close()
 
 
+_FOLDER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{20,}$")
+
+
+def _safe_drive_filename(name: str) -> str:
+    """Fix #9: kiem tra filename Drive de tranh path traversal.
+    Chi lay phan basename, tu choi ten co ky tu nguy hiem.
+    """
+    safe = Path(name).name  # bo het thu muc prefix
+    if not safe or safe.startswith("."):
+        raise ValueError(f"unsafe drive filename (hidden/empty): {name!r}")
+    for bad in ("/", "\\", "\x00"):
+        if bad in safe:
+            raise ValueError(f"unsafe drive filename (bad char): {name!r}")
+    return safe
+
+
 def main():
     if not DRIVE_FOLDER_ID:
         log("VEO_DRIVE_FOLDER_ID not set; aborting")
+        return
+
+    # Fix #9: validate DRIVE_FOLDER_ID format khi khoi dong
+    if not _FOLDER_ID_RE.match(DRIVE_FOLDER_ID):
+        log(f"DRIVE_FOLDER_ID format invalid (expected 20+ alphanum): {DRIVE_FOLDER_ID!r}")
         return
 
     # Lock via fcntl (atomic, no TOCTOU)
@@ -136,8 +162,15 @@ def main():
             if row and row[0] not in ("new", "error"):
                 continue
 
-            local = PICKUP_DIR / name
-            log(f"download {name} ({size//1024//1024}MB)")
+            # Fix #9: kiem tra ten file an toan truoc khi dung
+            try:
+                safe_name = _safe_drive_filename(name)
+            except ValueError as ve:
+                log(f"skip unsafe filename {name!r}: {ve}")
+                continue
+
+            local = PICKUP_DIR / safe_name
+            log(f"download {safe_name} ({size//1024//1024}MB)")
 
             # Retry up to 3x with backoff
             ok = False
@@ -157,22 +190,22 @@ def main():
                     INSERT OR REPLACE INTO veo_drive_files
                     (drive_id, filename, size, status)
                     VALUES (?, ?, ?, 'error')
-                """, (fid, name, size))
+                """, (fid, safe_name, size))
                 c.commit()
                 continue
 
-            topic = parse_topic(name)
+            topic = parse_topic(safe_name)
             c.execute("""
                 INSERT OR REPLACE INTO veo_drive_files
                 (drive_id, filename, topic, size, local_path, downloaded_at, status)
                 VALUES (?, ?, ?, ?, ?, datetime('now'), 'downloaded')
-            """, (fid, name, topic, size, str(local)))
+            """, (fid, safe_name, topic, size, str(local)))
             c.commit()
             new_count += 1
 
             tg_notify(
-                f"📥 <b>VEO video picked up</b>\n"
-                f"File: <code>{name}</code>\n"
+                f"VEO video picked up\n"
+                f"File: <code>{safe_name}</code>\n"
                 f"Topic: {topic}\n"
                 f"Size: {size//1024//1024}MB\n"
                 f"Status: queued for YouTube upload"

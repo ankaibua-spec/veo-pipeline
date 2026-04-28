@@ -12,6 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 import requests
+from requests.adapters import HTTPAdapter
+
+# Fix #17: dung Session pool de tai su dung TLS connection, giam latency
+_HTTP = requests.Session()
+_HTTP.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
+_HTTP.mount("http://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
 
 _qtcore = None
 _qtwidgets = None
@@ -89,18 +95,15 @@ class ImageToVideoWorkflow(QThread):
 		self._upload_executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="i2v-upload")
 		self._active_prompt_ids = set()
 		self._worker_controls_lifecycle = bool(self.project_data.get("_worker_controls_lifecycle", False))
+		# Fix #5: in-memory cache cho state.json, tranh O(N^2) disk I/O
+		self._state_data_cache: dict | None = None
+		self._state_dirty = False
+		self._last_state_flush_ts = 0.0
+		# Fix #7: cache prompts de tranh doc lai test.json moi lan lookup
+		self._prompts_cache: list | None = None
 
 	def run(self):
-		# ✅ XÓA EVENT LOOP CŨ NẾU CÓ (fix "Cannot run the event loop while another loop is running")
-		try:
-			existing_loop = asyncio.get_event_loop()
-			if existing_loop.is_running():
-				self._log("⚠️  Found running event loop, closing it...")
-				existing_loop.stop()
-			existing_loop.close()
-		except RuntimeError:
-			pass  # No existing event loop
-		
+		# Fix #20: tao event loop moi cho QThread, tranh get_event_loop() deprecated Python 3.12+
 		loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(loop)
 		try:
@@ -163,12 +166,11 @@ class ImageToVideoWorkflow(QThread):
 			pass
 
 	def _save_request_json(self, payload, prompt_id, prompt_text, flow="image_to_video"):
-		"""Lưu lịch sử request payload vào Workflows/{project}/request.json (dễ đọc, có format)."""
+		"""Fix #6: Append-only NDJSON tranh O(N^2) bytes khi doc lai toan bo file moi lan ghi."""
 		try:
 			project_dir = WORKFLOWS_DIR / str(self.project_name)
 			project_dir.mkdir(parents=True, exist_ok=True)
-			request_file = project_dir / "request.json"
-			request_data = {
+			record = {
 				"timestamp": int(time.time()),
 				"project_name": self.project_name,
 				"flow": flow,
@@ -176,37 +178,11 @@ class ImageToVideoWorkflow(QThread):
 				"prompt_text": prompt_text,
 				"request": payload,
 			}
-			entries = []
-			if request_file.exists():
-				try:
-					raw_text = request_file.read_text(encoding="utf-8").strip()
-					if raw_text:
-						parsed = json.loads(raw_text)
-						if isinstance(parsed, list):
-							entries = parsed
-						elif isinstance(parsed, dict):
-							entries = [parsed]
-				except Exception:
-					try:
-						with open(request_file, "r", encoding="utf-8") as f:
-							for line in f:
-								line = line.strip()
-								if not line:
-									continue
-								try:
-									obj = json.loads(line)
-									if isinstance(obj, dict):
-										entries.append(obj)
-								except Exception:
-									pass
-					except Exception:
-						entries = []
-
-			entries.append(request_data)
-			with open(request_file, "w", encoding="utf-8") as f:
-				json.dump(entries, f, ensure_ascii=False, indent=2)
+			ndjson_file = project_dir / "request.ndjson"
+			with open(ndjson_file, "a", encoding="utf-8") as f:
+				f.write(json.dumps(record, ensure_ascii=False) + "\n")
 		except Exception as e:
-			self._log(f"⚠️ Không thể lưu request.json: {e}")
+			self._log(f"⚠️ Khong the luu request.ndjson: {e}")
 
 	def _should_stop(self):
 		return bool(self.STOP)
@@ -1087,9 +1063,12 @@ class ImageToVideoWorkflow(QThread):
 			aspect_ratio=aspect_ratio,
 		)
 
-		self._log(f"⬆️  [Upload] prompt {prompt_id}: đang upload {stage_label}...")
+		self._log(f"⬆️  [Upload] prompt {prompt_id}: dang upload {stage_label}...")
 		try:
-			upload_response = asyncio.run(request_upload_image(upload_payload, access_token, cookie=cookie))
+			# Fix #8: goi truc tiep ham sync thay vi asyncio.run() trong thread de tranh nested event loop
+			from API_image_to_video import _send_request_with_token as _i2v_send
+			from API_image_to_video import URL_UPLOAD_IMAGE
+			upload_response = _i2v_send(URL_UPLOAD_IMAGE, upload_payload, access_token, method="POST", cookie=cookie)
 		except Exception as exc:
 			return {"ok": False, "error": "UPLOAD", "message": f"Upload {stage_label} failed: {exc}"}
 
@@ -1298,19 +1277,25 @@ class ImageToVideoWorkflow(QThread):
 		return state_dir / "state.json"
 
 	def _load_state_json(self):
+		# Fix #5: tra ve cache in-memory neu da co, chi doc disk lan dau
+		if self._state_data_cache is not None:
+			return self._state_data_cache
 		state_file = self._get_state_file_path()
 		if not state_file.exists():
-			return {}
+			self._state_data_cache = {}
+			return self._state_data_cache
 		try:
 			with open(state_file, "r", encoding="utf-8") as f:
-				return json.load(f)
+				self._state_data_cache = json.load(f)
 		except Exception:
-			return {}
+			self._state_data_cache = {}
+		return self._state_data_cache
 
 	def _cleanup_workflow_data(self):
-		"""✅ Xóa tất cả dữ liệu cũ trong folder Workflows/{project} NGOẠI TRỪ test.json"""
+		"""Xoa tat ca du lieu cu trong folder Workflows/{project} ngoai tru test.json"""
 		try:
-			self._save_state_json({})
+			self._state_data_cache = {}  # reset cache truoc khi ghi
+			self._save_state_json({}, force=True)
 			if self.project_data.get("_skip_clear_download"):
 				self._log("🧹 Bỏ qua xóa dữ liệu (auto_noi_canh), giữ file cũ")
 				return
@@ -1383,7 +1368,14 @@ class ImageToVideoWorkflow(QThread):
 	def _resolve_worker_max_in_flight(self, fallback_value):
 		return max(1, int(get_max_in_flight(default_value=int(fallback_value or 1))))
 
-	def _save_state_json(self, state_data):
+	def _save_state_json(self, state_data, force=False):
+		# Fix #5: cap nhat cache truoc, debounce flush disk xuong 1Hz de giam O(N^2) writes
+		self._state_data_cache = state_data
+		now = time.time()
+		# force=True khi trang thai cuoi (DONE/FAILED) hoac khi caller can bao dam ghi xong
+		if not force and (now - self._last_state_flush_ts) < 1.0:
+			return True
+		self._last_state_flush_ts = now
 		state_file = self._get_state_file_path()
 		try:
 			with open(state_file, "w", encoding="utf-8") as f:
@@ -1648,17 +1640,17 @@ class ImageToVideoWorkflow(QThread):
 				continue
 
 			response_body = response.get("body", "")
-			if not self._handle_status_response(response_body):
+			if not await self._handle_status_response(response_body):
 				self._status_poll_fail_streak += 1
 				self._log(
-					f"⚠️ Check status parse lỗi (lần {self._status_poll_fail_streak}/4)"
+					f"⚠️ Check status parse loi (lan {self._status_poll_fail_streak}/4)"
 				)
 			else:
 				self._status_poll_fail_streak = 0
 				self._mark_stuck_pending(time.time())
 			await asyncio.sleep(5)
 
-	def _handle_status_response(self, response_body):
+	async def _handle_status_response(self, response_body):
 		try:
 			body_json = json.loads(response_body)
 			operations = body_json.get("operations", [])
@@ -1731,10 +1723,13 @@ class ImageToVideoWorkflow(QThread):
 				message_to_store = op_summary
 
 			if status == "MEDIA_GENERATION_STATUS_SUCCESSFUL":
+				# Fix #4: chay sync requests.get qua executor tranh block asyncio loop
+				loop = asyncio.get_running_loop()
+				executor = self._upload_executor
 				if video_url:
-					video_path = self._download_video(video_url, prompt_idx)
+					video_path = await loop.run_in_executor(executor, self._download_video, video_url, prompt_idx)
 				if image_url:
-					image_path = self._download_image(image_url, prompt_idx)
+					image_path = await loop.run_in_executor(executor, self._download_image, image_url, prompt_idx)
 
 			self._update_state_entry(
 				prompt_id,
@@ -1865,21 +1860,21 @@ class ImageToVideoWorkflow(QThread):
 		video_dir.mkdir(parents=True, exist_ok=True)
 		file_path = self._build_timestamped_media_path(video_dir, str(prompt_idx), ".mp4")
 		try:
-			with requests.get(url, stream=True, timeout=60) as resp:
+			with _HTTP.get(url, stream=True, timeout=60) as resp:
 				resp.raise_for_status()
 				with open(file_path, "wb") as f:
 					for chunk in resp.iter_content(chunk_size=1024 * 1024):
 						if chunk:
 							f.write(chunk)
 			out_path = str(file_path.resolve())
-			self._log(f"⬇️  Tải video xong: {out_path}")
+			self._log(f"Tai video xong: {out_path}")
 			try:
 				self.video_folder_updated.emit(str(video_dir.resolve()))
 			except Exception:
 				pass
 			return out_path
 		except Exception:
-			self._log("⚠️  Không tải được video")
+			self._log("Khong tai duoc video")
 			return ""
 
 	def _download_image(self, url, prompt_idx):
@@ -1889,7 +1884,7 @@ class ImageToVideoWorkflow(QThread):
 		image_dir.mkdir(parents=True, exist_ok=True)
 		file_path = self._build_timestamped_media_path(image_dir, str(prompt_idx), ".jpg")
 		try:
-			with requests.get(url, stream=True, timeout=60) as resp:
+			with _HTTP.get(url, stream=True, timeout=60) as resp:
 				resp.raise_for_status()
 				with open(file_path, "wb") as f:
 					for chunk in resp.iter_content(chunk_size=1024 * 256):
@@ -1897,26 +1892,29 @@ class ImageToVideoWorkflow(QThread):
 							f.write(chunk)
 			return str(file_path.resolve())
 		except Exception:
-			self._log("⚠️  Không tải được image")
+			self._log("Khong tai duoc image")
 			return ""
 
+	def _get_prompts_cached(self):
+		"""Fix #7: Load prompts mot lan va cache, tranh doc lai test.json moi status update."""
+		if self._prompts_cache is None:
+			self._prompts_cache = self._load_image_prompts()
+		return self._prompts_cache
+
 	def _get_prompt_text(self, prompt_id):
-		prompts = self._load_image_prompts()
-		for item in prompts:
+		for item in self._get_prompts_cached():
 			if item["id"] == prompt_id:
 				return item.get("prompt", "")
 		return ""
 
 	def _get_image_link(self, prompt_id):
-		prompts = self._load_image_prompts()
-		for item in prompts:
+		for item in self._get_prompts_cached():
 			if item["id"] == prompt_id:
 				return item.get("start_image_link") or item.get("image_link", "")
 		return ""
 
 	def _get_end_image_link(self, prompt_id):
-		prompts = self._load_image_prompts()
-		for item in prompts:
+		for item in self._get_prompts_cached():
 			if item["id"] == prompt_id:
 				return item.get("end_image_link", "")
 		return ""

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+// Nguon duy nhat cho version string — doc tu package.json qua vite.config.ts define
+const APP_VERSION: string = import.meta.env.VITE_APP_VERSION ?? '0.0.0';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, X, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 
@@ -10,12 +12,15 @@ interface Props {
 }
 
 const formatKey = (raw: string) => {
-  const clean = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 16);
-  return clean.match(/.{1,4}/g)?.join('-') ?? '';
+  const stripped = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const tooLong = stripped.length > 16;
+  const clean = stripped.slice(0, 16);
+  return { formatted: clean.match(/.{1,4}/g)?.join('-') ?? '', tooLong };
 };
 
 export default function LicenseModal({ open, onClose, onActivate, machineId = 'B4F2-9A1C-7E3D-2F8B' }: Props) {
   const [key, setKey] = useState('');
+  const [keyTooLong, setKeyTooLong] = useState(false);
   const [state, setState] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -23,6 +28,7 @@ export default function LicenseModal({ open, onClose, onActivate, machineId = 'B
   useEffect(() => {
     if (!open) {
       setKey('');
+      setKeyTooLong(false);
       setState('idle');
       setMessage(null);
     }
@@ -91,7 +97,7 @@ export default function LicenseModal({ open, onClose, onActivate, machineId = 'B
                 </div>
                 <div>
                   <div className="text-[20px] font-semibold leading-tight text-[#FAFAFA]">VEO Pipeline Pro</div>
-                  <div className="text-[12px] text-[#71717A] leading-tight mt-0.5">Commercial Edition v6.0.0</div>
+                  <div className="text-[12px] text-[#71717A] leading-tight mt-0.5">Commercial Edition v{APP_VERSION}</div>
                 </div>
               </div>
 
@@ -101,13 +107,23 @@ export default function LicenseModal({ open, onClose, onActivate, machineId = 'B
               <div className="mt-6">
                 <input
                   value={key}
-                  onChange={(e) => setKey(formatKey(e.target.value))}
+                  onChange={(e) => {
+                    const r = formatKey(e.target.value);
+                    setKey(r.formatted);
+                    setKeyTooLong(r.tooLong);
+                  }}
                   placeholder="XXXX-XXXX-XXXX-XXXX"
                   className="w-full h-14 px-4 rounded-lg bg-[#16161D] border border-[#1F1F28] focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/40 outline-none font-mono text-[16px] tracking-wider text-[#FAFAFA] placeholder:text-[#52525B] transition-colors"
                   spellCheck={false}
                   autoFocus
                 />
               </div>
+
+              {keyTooLong && (
+                <p className="mt-1.5 text-[12px] text-[#EF4444]">
+                  Key vuot 16 ky tu, da cat — kiem tra lai
+                </p>
+              )}
 
               <div className="mt-3 flex items-center justify-between bg-[#0E0E13] border border-[#1F1F28] rounded-lg px-4 py-3">
                 <div>

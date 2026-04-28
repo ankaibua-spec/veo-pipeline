@@ -176,24 +176,12 @@ def _build_generated_video_urls(user_id: str, generated_id: str) -> dict[str, st
 
 
 def _append_request_log(record: dict[str, Any]) -> None:
-  """Append one debug record into pretty JSON file grok_request.json."""
+  """Fix #22: Append-only NDJSON tranh O(N^2) reads+writes."""
   try:
     REQUEST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    existing: list[dict[str, Any]] = []
-    if REQUEST_LOG_PATH.exists():
-      try:
-        raw = json.loads(REQUEST_LOG_PATH.read_text(encoding="utf-8"))
-        if isinstance(raw, list):
-          existing = [item for item in raw if isinstance(item, dict)]
-      except Exception:
-        existing = []
-
-    existing.append(record)
-    REQUEST_LOG_PATH.write_text(
-      json.dumps(existing, ensure_ascii=False, indent=2),
-      encoding="utf-8",
-    )
+    ndjson_path = REQUEST_LOG_PATH.with_suffix(".ndjson")
+    with open(ndjson_path, "a", encoding="utf-8") as _f:
+      _f.write(json.dumps(record, ensure_ascii=False) + "\n")
   except Exception:
     pass
 
@@ -877,7 +865,8 @@ async def api_run_image_to_video_job(
     )
     
     last_event = video_result.get("lastEvent") or {}
-    video_id = last_event.get("videoId")
+    # Fix #15: fallback sang generatedId / parentPostId neu videoId chua co
+    video_id = last_event.get("videoId") or video_result.get("generatedId") or last_event.get("parentPostId")
     direct_video_url = str(video_result.get("directVideoUrl") or "").strip()
     hd_video_candidate = str(video_result.get("hdVideoUrlCandidate") or "").strip()
     has_generation_signal = bool(

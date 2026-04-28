@@ -31,10 +31,16 @@ def load_config() -> dict:
 
 
 def save_config(d: dict):
+    import os as _os
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = CONFIG_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False))
     tmp.replace(CONFIG_FILE)
+    # Bao mat: chi chu so huu doc duoc file chua thong tin Drive
+    try:
+        _os.chmod(CONFIG_FILE, 0o600)
+    except OSError:
+        pass
 
 
 class DriveSettingsDialog(QDialog):
@@ -258,6 +264,12 @@ class DriveSettingsDialog(QDialog):
         if cred_data:
             CRED_FILE.parent.mkdir(parents=True, exist_ok=True)
             CRED_FILE.write_text(json.dumps(cred_data, indent=2))
+            # Bao mat: chi chu so huu doc duoc file chua token
+            try:
+                import os as _os
+                _os.chmod(CRED_FILE, 0o600)
+            except OSError:
+                pass
             self.cred_path.setText(str(CRED_FILE) + f"  (OAuth from app.trbm.shop · {data.get('email','?')})")
             self.cred_path.setReadOnly(True)
 
@@ -333,6 +345,7 @@ class DriveSettingsDialog(QDialog):
 
     def _save_silent(self):
         """Save config without showing the 'Saved' popup."""
+        import os as _os
         cfg = {
             "output_dir": self.output_dir.text().strip(),
             "drive_id": self.drive_id.text().strip(),
@@ -345,11 +358,17 @@ class DriveSettingsDialog(QDialog):
             try:
                 CRED_FILE.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(cred_text, CRED_FILE)
+                # Bao mat: chi chu so huu doc duoc file chua token
+                try:
+                    _os.chmod(CRED_FILE, 0o600)
+                except OSError:
+                    pass
             except Exception:
                 pass
         save_config(cfg)
 
     def _save(self):
+        import os as _os
         cfg = {
             "output_dir": self.output_dir.text().strip(),
             "drive_id": self.drive_id.text().strip(),
@@ -364,6 +383,11 @@ class DriveSettingsDialog(QDialog):
             try:
                 CRED_FILE.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(cred_text, CRED_FILE)
+                # Bao mat: chi chu so huu doc duoc file chua token
+                try:
+                    _os.chmod(CRED_FILE, 0o600)
+                except OSError:
+                    pass
             except Exception as e:
                 QMessageBox.warning(self, "Cred copy failed", str(e))
                 return

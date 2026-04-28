@@ -351,6 +351,8 @@ async def api_run_single_job_in_page(
                 if (!value) continue;
 
                 buffer += decoder.decode(value, { stream: true });
+                // Fix #19: gioi han buffer de tranh OOM khi server tra JSON khong hop le
+                if (buffer.length > 16 * 1024 * 1024) { console.error('stream buffer overflow, aborting'); break; }
                 const parsed = parseJsonObjectsFromBuffer(buffer);
                 buffer = parsed.tail;
                 if (parsed.objects.length) {
@@ -416,7 +418,9 @@ async def api_run_single_job_in_page(
           let usedUpscale = false;
           if (convo && convo.status === 200 && convo.lastEvent && typeof convo.lastEvent.progress === 'number' && convo.lastEvent.progress >= 100) {
             if (!is720p) {
-              upscale = await upscaleVideo(created.parentPostId, 3);
+              // Fix #14: dung videoId tu convo.lastEvent neu co, fallback sang parentPostId
+              const upscaleId = (convo.lastEvent && convo.lastEvent.videoId) || (convo.lastEvent && convo.lastEvent.parentPostId) || created.parentPostId;
+              upscale = await upscaleVideo(upscaleId, 3);
               if (upscale && upscale.hdMediaUrl) {
                 finalMediaUrl = upscale.hdMediaUrl;
                 usedUpscale = true;
@@ -805,11 +809,13 @@ async def download_mp4(context, url: str, out_path: Path, timeout_ms: int) -> bo
         print(f"⚠️ Download exception: {exc}")
 
       if attempt < max_attempts:
-        # small backoff for flaky CDN / transient network errors
+        # Fix #16: Cloudflare interstitial can up to ~5 min, dung backoff [10, 30, 60]s
+        _backoff = [10, 30, 60]
+        _sleep_s = _backoff[attempt - 1] if attempt - 1 < len(_backoff) else 60
         try:
           import asyncio
-
-          await asyncio.sleep(0.8 * attempt)
+          print(f"⬇️ Retry {attempt}/{max_attempts} sau {_sleep_s}s...")
+          await asyncio.sleep(_sleep_s)
         except Exception:
           pass
 

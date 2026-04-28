@@ -7,6 +7,9 @@ import sys
 import unicodedata
 from pathlib import Path
 
+# Cac ky tu khong an toan khi dua vao label HTML / ten file / window title
+_UNSAFE = re.compile(r'[<>"\'&\x00\r\n\t/\\]')
+
 DEFAULT_OWNER_NAME = "Truong Hoa"
 DEFAULT_OWNER_PHONE = "0345431884"
 
@@ -84,8 +87,9 @@ def _load_owner_from_state():
 
 
 def save_runtime_owner(owner_name: str, owner_phone: str) -> bool:
-    owner_name = str(owner_name or "").strip()
-    owner_phone = str(owner_phone or "").strip()
+    # Loc ky tu nguy hiem truoc khi luu / hien thi tren UI
+    owner_name = _UNSAFE.sub('', str(owner_name or '').strip())[:64]
+    owner_phone = _UNSAFE.sub('', str(owner_phone or '').strip())[:32]
 
     if not owner_name or not owner_phone:
         return False

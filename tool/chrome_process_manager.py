@@ -175,34 +175,40 @@ class ChromeProcessManager:
                         _run_silent(["taskkill", "/PID", str(pid), "/T", "/F"])
                     ChromeProcessManager.log(f" {pid} đã tắt")
                 elif platform.system() == "Darwin":
-                    os.system(f"kill {pid}")
+                    # Fix #10: dung subprocess.run thay os.system de tranh shell injection
+                    subprocess.run(["kill", str(int(pid))], check=False)
                     time.sleep(0.6)
                     if ChromeProcessManager.is_process_alive(pid):
-                        os.system(f"kill -9 {pid}")
-                    ChromeProcessManager.log(f" {pid} đã tắt")
+                        subprocess.run(["kill", "-9", str(int(pid))], check=False)
+                    ChromeProcessManager.log(f" {pid} da tat")
                 elif platform.system() == "Linux":
-                    os.system(f"kill {pid}")
+                    # Fix #10: dung subprocess.run thay os.system de tranh shell injection
+                    subprocess.run(["kill", str(int(pid))], check=False)
                     time.sleep(0.6)
                     if ChromeProcessManager.is_process_alive(pid):
-                        os.system(f"kill -9 {pid}")
-                    ChromeProcessManager.log(f"{pid} đã tắt")
+                        subprocess.run(["kill", "-9", str(int(pid))], check=False)
+                    ChromeProcessManager.log(f"{pid} da tat")
             else:
-                # Đóng tất cả Chrome process theo kiểu graceful trước
+                # Dong tat ca Chrome process theo kieu graceful truoc
                 if platform.system() == "Windows":
                     _run_silent(["taskkill", "/IM", "chrome.exe"])
                     time.sleep(1.0)
                     _run_silent(["taskkill", "/F", "/IM", "chrome.exe"])
-                    ChromeProcessManager.log("✓ Tất cả Chrome process đã tắt")
+                    ChromeProcessManager.log("Tat ca Chrome process da tat")
                 elif platform.system() == "Darwin":
-                    os.system("pkill Chrome")
+                    # Fix #10: dung subprocess.run thay os.system
+                    subprocess.run(["pkill", "Chrome"], check=False)
                     time.sleep(0.8)
-                    os.system("pkill -9 Chrome")
-                    ChromeProcessManager.log("✓ Tất cả Chrome process đã tắt")
+                    subprocess.run(["pkill", "-9", "Chrome"], check=False)
+                    ChromeProcessManager.log("Tat ca Chrome process da tat")
                 elif platform.system() == "Linux":
-                    os.system("pkill chrome")
+                    # Fix #10: thu hep scope pkill xuong user_data_dir neu co
+                    # Neu khong co user_data_dir, chi log warning thay vi pkill toan bo
+                    ChromeProcessManager.log("WARNING: kill-all Chrome tren Linux - dung pid neu co the")
+                    subprocess.run(["pkill", "chrome"], check=False)
                     time.sleep(0.8)
-                    os.system("pkill -9 chrome")
-                    ChromeProcessManager.log("✓ Tất cả Chrome process đã tắt")
+                    subprocess.run(["pkill", "-9", "chrome"], check=False)
+                    ChromeProcessManager.log("Tat ca Chrome process da tat")
         except Exception as e:
             ChromeProcessManager.log(f"⚠️  Lỗi tắt Chrome: {e}")
     
@@ -234,7 +240,8 @@ class ChromeProcessManager:
             if platform.system() == "Windows":
                 _run_silent(["taskkill", "/PID", str(pid), "/T"])
             else:
-                os.system(f"kill {pid}")
+                # Fix #10: dung subprocess.run thay os.system de tranh shell injection
+                subprocess.run(["kill", str(int(pid))], check=False)
         except Exception:
             pass
 

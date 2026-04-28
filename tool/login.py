@@ -293,7 +293,10 @@ class LoginGuideDialog:
         project_id = str(capture_state.get("projectId") or existing.get("projectId") or "").strip()
         access_token = str(capture_state.get("access_token") or existing.get("access_token") or "").strip()
         cookie_value = capture_state.get("cookie")
-        cookie_text = str(cookie_value).strip() if cookie_value is not None else str(existing.get("cookie") or "").strip()
+        # Fix #12: empty-string cookie KHONG xoa cookie cu da luu, chi dung cookie moi khi co noi dung
+        cookie_text = str(cookie_value).strip() if cookie_value is not None else ""
+        if not cookie_text:
+            cookie_text = str(existing.get("cookie") or "").strip()
 
         existing_url = str(existing.get("URL_GEN_TOKEN") or "").strip()
         if project_id:
@@ -318,8 +321,7 @@ class LoginGuideDialog:
             account_payload["TYPE_ACCOUNT"] = existing.get("TYPE_ACCOUNT")
         else:
             account_payload["TYPE_ACCOUNT"] = "ULTRA"
-        if isinstance(existing, dict) and existing.get("cookie") and not account_payload.get("cookie"):
-            account_payload["cookie"] = str(existing.get("cookie") or "")
+        # Fix #12 (continued): dam bao cookie khong bao gio None
         if account_payload.get("cookie") is None:
             account_payload["cookie"] = ""
         config["account1"] = account_payload
@@ -329,9 +331,11 @@ class LoginGuideDialog:
 async def login_veo3_auto(username, password, profile_name=None, log_callback=None, stop_check=None):
     from playwright.async_api import async_playwright
 
-    node_opts = os.environ.get("NODE_OPTIONS", "").strip()
-    if "--no-deprecation" not in node_opts:
-        os.environ["NODE_OPTIONS"] = f"{node_opts} --no-deprecation".strip()
+    # Fix #24: truyen env= vao playwright thay vi mutate global os.environ
+    _node_opts = os.environ.get("NODE_OPTIONS", "").strip()
+    if "--no-deprecation" not in _node_opts:
+        _node_opts = f"{_node_opts} --no-deprecation".strip()
+    _pw_env = {**os.environ, "NODE_OPTIONS": _node_opts}
 
     def _cb_log(message):
         _log(message, log_callback)
@@ -522,26 +526,38 @@ async def login_veo3_auto(username, password, profile_name=None, log_callback=No
 
         _reset_profile_dir(profile_name)
         opened = open_profile_chrome(profile_name=profile_name, url=FLOW_URL, language="en-US")
-        debug_port = int((opened or {}).get("port") or _pick_debug_port(9222, 10))
+        # Fix #11: neu open_profile_chrome tra ve None hoac khong co port, raise loi ro rang
+        _opened_port = (opened or {}).get("port")
+        if not _opened_port:
+            raise RuntimeError(
+                f"open_profile_chrome failed silently (returned {opened!r}), khong co port de CDP"
+            )
+        debug_port = int(_opened_port)
         profile_dir = Path((opened or {}).get("profile_dir") or _resolve_profile_dir(profile_name))
         _cb_log(f"🚀 Đang mở Chrome (debug_port={debug_port})")
         await asyncio.sleep(2)
 
+        # Fix #10: luu last exception de log truoc khi bao loi cuoi
+        _cdp_last_exc: Exception | None = None
         for _ in range(10):
             if _should_stop():
-                return {"success": False, "stopped": True, "already_logged_in": False, "message": "Đã dừng auto login."}
+                return {"success": False, "stopped": True, "already_logged_in": False, "message": "Da dung auto login."}
             try:
                 browser = await playwright.chromium.connect_over_cdp(
                     f"http://localhost:{debug_port}",
                     timeout=5000,
                 )
                 break
-            except Exception:
+            except Exception as _cdp_exc:
+                _cdp_last_exc = _cdp_exc
                 await asyncio.sleep(1)
 
         if not browser:
-            message = f"Không kết nối được Chrome qua CDP ({debug_port})"
-            _cb_log(f"❌ {message}")
+            # Fix #10: log exception cuoi cung de de debug
+            if _cdp_last_exc is not None:
+                print(f"CDP final fail: {type(_cdp_last_exc).__name__}: {_cdp_last_exc}")
+            message = f"Khong ket noi duoc Chrome qua CDP ({debug_port})"
+            _cb_log(f"CDP {message}")
             return {"success": False, "already_logged_in": False, "message": message}
         context = browser.contexts[0] if browser.contexts else await browser.new_context()
         if context.pages:
@@ -659,7 +675,7 @@ async def login_veo3_auto(username, password, profile_name=None, log_callback=No
 
         _cb_log(f"📝 [Step 3] Nhập email: {username}")
         await email_input.fill("")
-        await email_input.type(username, delay=2)
+        await email_input.type(username, delay=120)  # Fix #9: delay la ms, 2ms qua nhanh (bot fingerprint), dung 120ms
         await asyncio.sleep(2)
 
         next_btn = None
@@ -693,7 +709,7 @@ async def login_veo3_auto(username, password, profile_name=None, log_callback=No
 
         _cb_log("📝 [Step 5] Nhập password...")
         await password_input.fill("")
-        await password_input.type(password, delay=2)
+        await password_input.type(password, delay=120)  # Fix #9: delay la ms, 120ms giong nguoi that
         await asyncio.sleep(2)
 
         _cb_log("🔍 [Step 6] Tìm nút Next (password)...")

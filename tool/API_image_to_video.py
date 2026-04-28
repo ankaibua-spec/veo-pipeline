@@ -74,6 +74,14 @@ def _load_account_context():
 		}
 	if account_type == "ULTRA":
 		return {
+			"type_account": "ULTRA",
+			"video_model_key_landscape": custom_landscape or DEFAULT_VIDEO_MODEL_KEY_LANDSCAPE_ULTRA,
+			"video_model_key_portrait": custom_portrait or DEFAULT_VIDEO_MODEL_KEY_PORTRAIT_ULTRA,
+			"user_paygate_tier": "PAYGATE_TIER_TWO",
+		}
+
+	# Fix #2: fallback ULTRA de tranh crash khi account_type la gia tri la
+	return {
 		"type_account": "ULTRA",
 		"video_model_key_landscape": custom_landscape or DEFAULT_VIDEO_MODEL_KEY_LANDSCAPE_ULTRA,
 		"video_model_key_portrait": custom_portrait or DEFAULT_VIDEO_MODEL_KEY_PORTRAIT_ULTRA,
@@ -176,7 +184,14 @@ def build_payload_generate_video_start_end(
 		request_item["textInput"] = {"prompt": prompt}
 
 	count = output_count if isinstance(output_count, int) and output_count > 0 else 1
-	requests = [request_item.copy() for _ in range(count)]
+	# Fix #1: deep copy + gan sceneId doc lap cho tung output, tranh share chung metadata ref
+	import json as _json
+	import uuid as _uuid
+	requests = []
+	for _ in range(count):
+		copied = _json.loads(_json.dumps(request_item))
+		copied.setdefault("metadata", {})["sceneId"] = str(_uuid.uuid4())
+		requests.append(copied)
 
 	return {
 		"clientContext": {
@@ -200,7 +215,7 @@ def _send_request_with_token(url, payload, token, method="POST", cookie=None):
 		headers["Cookie"] = cookie
 	req = urllib.request.Request(url=url, data=data, headers=headers, method=method)
 	try:
-		with urllib.request.urlopen(req, timeout=60) as resp:
+		with urllib.request.urlopen(req, timeout=90) as resp:
 			body = resp.read().decode("utf-8", errors="replace")
 			return {
 				"ok": True,

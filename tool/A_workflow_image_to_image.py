@@ -14,6 +14,12 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 import requests
+from requests.adapters import HTTPAdapter
+
+# Fix #17: dung Session pool de tai su dung TLS connection, giam latency
+_HTTP = requests.Session()
+_HTTP.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
+_HTTP.mount("http://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
 
 _qtcore = None
 try:
@@ -62,6 +68,11 @@ class GenerateImageWorkflow(QThread):
 		self._in_flight_block_start_ts = 0
 		self._image_mode = str(self.project_data.get("image_mode") or "prompt").strip().lower()
 		self._active_prompt_ids = set()
+		# Fix #5: in-memory cache cho state.json, tranh O(N^2) disk I/O
+		self._state_data_cache: dict | None = None
+		self._last_state_flush_ts = 0.0
+		# Fix #7: cache prompts de tranh doc lai test.json moi lan lookup
+		self._prompts_cache: list | None = None
 
 	def run(self):
 		try:
@@ -121,16 +132,28 @@ class GenerateImageWorkflow(QThread):
 		return state_dir / "state.json"
 
 	def _load_state_json(self):
+		# Fix #5: tra ve cache in-memory neu da co, chi doc disk lan dau
+		if self._state_data_cache is not None:
+			return self._state_data_cache
 		state_file = self._get_state_file_path()
 		if not state_file.exists():
-			return {}
+			self._state_data_cache = {}
+			return self._state_data_cache
 		try:
 			with open(state_file, "r", encoding="utf-8") as f:
-				return json.load(f)
+				self._state_data_cache = json.load(f)
 		except Exception:
-			return {}
+			self._state_data_cache = {}
+		return self._state_data_cache
 
-	def _save_state_json(self, state_data):
+	def _save_state_json(self, state_data, force=False):
+		# Fix #5: debounce flush disk xuong 1Hz
+		self._state_data_cache = state_data
+		import time as _time
+		now = _time.time()
+		if not force and (now - self._last_state_flush_ts) < 1.0:
+			return True
+		self._last_state_flush_ts = now
 		state_file = self._get_state_file_path()
 		try:
 			tmp_file = state_file.with_suffix(".json.tmp")
@@ -533,7 +556,7 @@ class GenerateImageWorkflow(QThread):
 		image_dir.mkdir(parents=True, exist_ok=True)
 		file_path = self._build_timestamped_media_path(image_dir, str(prompt_idx), ".jpg")
 		try:
-			with requests.get(url_text, stream=True, timeout=60) as resp:
+			with _HTTP.get(url_text, stream=True, timeout=60) as resp:
 				resp.raise_for_status()
 				with open(file_path, "wb") as f:
 					for chunk in resp.iter_content(chunk_size=1024 * 256):
@@ -1154,7 +1177,12 @@ class GenerateImageWorkflow(QThread):
 					image_url = media.get("downloadUrl") or media.get("uri") or ""
 					if not image_url:
 						self._log(f"⚠️ Prompt {prompt_id} scene {idx + 1}: API không có downloadUrl/uri")
-					image_path = self._download_image(image_url, f"{prompt_id}_{idx + 1}") if image_url else ""
+					# Fix #4: chay sync requests.get qua executor tranh block asyncio loop
+				if image_url:
+					_loop = asyncio.get_running_loop()
+					image_path = await _loop.run_in_executor(None, self._download_image, image_url, f"{prompt_id}_{idx + 1}")
+				else:
+					image_path = ""
 					self._update_state_entry(
 						prompt_id,
 						prompt_text,

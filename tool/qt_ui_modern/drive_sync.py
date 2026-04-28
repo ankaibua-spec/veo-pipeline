@@ -55,6 +55,11 @@ def _load_db() -> dict:
 def _save_db(d: dict):
     PROCESSED_DB.parent.mkdir(parents=True, exist_ok=True)
     PROCESSED_DB.write_text(json.dumps(d, indent=2))
+    # Bao mat: chi chu so huu doc duoc file trang thai Drive
+    try:
+        os.chmod(PROCESSED_DB, 0o600)
+    except OSError:
+        pass
 
 
 def _derive_topic(filename: str) -> str:

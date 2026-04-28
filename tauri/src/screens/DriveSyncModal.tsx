@@ -45,7 +45,7 @@ export default function DriveSyncModal({ open, onClose, connected = true, email 
     notifyErrors: true,
   });
   const [schedule, setSchedule] = useState<'realtime' | 'minutes' | 'daily' | 'manual'>('realtime');
-  const [interval, setInterval] = useState(30);
+  const [intervalMin, setIntervalMin] = useState(30);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -240,7 +240,7 @@ export default function DriveSyncModal({ open, onClose, connected = true, email 
                     <div className="mt-5 space-y-2">
                       {[
                         { id: 'realtime', label: 'Realtime (watcher)', desc: 'Upload immediately on file change.' },
-                        { id: 'minutes', label: `Every ${interval} minutes`, desc: 'Periodic batch upload.' },
+                        { id: 'minutes', label: `Every ${intervalMin} minutes`, desc: 'Periodic batch upload.' },
                         { id: 'daily', label: 'Daily at 03:00', desc: 'Run once per day.' },
                         { id: 'manual', label: 'Manual only', desc: 'Trigger via button.' },
                       ].map((opt) => (
@@ -269,8 +269,12 @@ export default function DriveSyncModal({ open, onClose, connected = true, email 
                         <label className="text-[13px] text-[#A1A1AA]">Every</label>
                         <input
                           type="number" min={5} max={1440}
-                          value={interval}
-                          onChange={(e) => { setInterval(Number(e.target.value)); markDirty(); }}
+                          value={intervalMin}
+                          onChange={(e) => {
+                            // Clamp: tranh luu gia tri 0 gay loop vo han
+                            setIntervalMin(Math.max(5, Math.min(1440, Number(e.target.value) || 30)));
+                            markDirty();
+                          }}
                           className="w-24 h-9 px-3 rounded-lg bg-[#16161D] border border-[#1F1F28] text-[#FAFAFA] text-[13px]"
                         />
                         <span className="text-[13px] text-[#A1A1AA]">minutes</span>

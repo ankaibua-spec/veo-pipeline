@@ -13,6 +13,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+
+# Fix #17: dung Session pool de tai su dung TLS connection, giam latency
+_HTTP = requests.Session()
+_HTTP.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
+_HTTP.mount("http://", HTTPAdapter(pool_connections=10, pool_maxsize=20))
 
 _qtcore = None
 _qtwidgets = None
@@ -61,6 +67,11 @@ class CharacterSyncWorkflow(QThread):
         self._complete_wait_start_ts = 0.0
         self._complete_wait_timeout = 0
         self._active_prompt_ids = set()
+        # Fix #5: in-memory cache cho state.json, tranh O(N^2) disk I/O
+        self._state_data_cache: dict | None = None
+        self._last_state_flush_ts = 0.0
+        # Fix #7: cache prompts de tranh doc lai test.json moi lan lookup
+        self._prompts_cache: list | None = None
 
     def run(self):
         loop = asyncio.new_event_loop()
@@ -538,11 +549,11 @@ class CharacterSyncWorkflow(QThread):
 
             body = response.get("body", "")
             try:
-                ok_parse = self._handle_status_response(body)
+                ok_parse = await self._handle_status_response(body)
             except Exception as exc:
                 ok_parse = False
                 self._status_poll_fail_streak += 1
-                self._log(f"❌ Check status exception (lần {self._status_poll_fail_streak}/4): {exc}")
+                self._log(f"Check status exception (lan {self._status_poll_fail_streak}/4): {exc}")
                 self._log(traceback.format_exc()[:800])
 
             if not ok_parse:
@@ -553,7 +564,7 @@ class CharacterSyncWorkflow(QThread):
                 self._mark_stuck_pending(time.time())
             await asyncio.sleep(5)
 
-    def _handle_status_response(self, response_body):
+    async def _handle_status_response(self, response_body):
         try:
             operations = (json.loads(response_body) or {}).get("operations", [])
         except Exception:
@@ -626,10 +637,13 @@ class CharacterSyncWorkflow(QThread):
                         "_prompt_id": prompt_id,
                     }
                 )
+                # Fix #4: chay sync requests.get qua executor tranh block asyncio loop
+                loop = asyncio.get_running_loop()
+                executor = self._upload_executor
                 if video_url:
-                    video_path = self._download_video(video_url, prompt_idx)
+                    video_path = await loop.run_in_executor(executor, self._download_video, video_url, prompt_idx)
                 if image_url:
-                    image_path = self._download_image(image_url, prompt_idx)
+                    image_path = await loop.run_in_executor(executor, self._download_image, image_url, prompt_idx)
 
             self._update_state_entry(
                 prompt_id,
@@ -806,7 +820,7 @@ class CharacterSyncWorkflow(QThread):
         output_dir = self._video_output_dir()
         file_path = self._build_timestamped_media_path(output_dir, str(prompt_idx), ".mp4")
         try:
-            with requests.get(url, stream=True, timeout=60) as resp:
+            with _HTTP.get(url, stream=True, timeout=60) as resp:
                 resp.raise_for_status()
                 with open(file_path, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=1024 * 1024):
@@ -824,7 +838,7 @@ class CharacterSyncWorkflow(QThread):
         output_dir = self._image_output_dir()
         file_path = self._build_timestamped_media_path(output_dir, str(prompt_idx), ".jpg")
         try:
-            with requests.get(url, stream=True, timeout=60) as resp:
+            with _HTTP.get(url, stream=True, timeout=60) as resp:
                 resp.raise_for_status()
                 with open(file_path, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=1024 * 256):
@@ -849,7 +863,7 @@ class CharacterSyncWorkflow(QThread):
         is_url = parsed.scheme in {"http", "https"}
         try:
             if is_url:
-                resp = requests.get(str(image_link), timeout=30)
+                resp = _HTTP.get(str(image_link), timeout=30)
                 resp.raise_for_status()
                 mime_type = resp.headers.get("Content-Type") or ""
                 if ";" in mime_type:
@@ -939,15 +953,26 @@ class CharacterSyncWorkflow(QThread):
         return project_dir / "state.json"
 
     def _load_state_json(self):
+        # Fix #5: tra ve cache in-memory neu da co, chi doc disk lan dau
+        if self._state_data_cache is not None:
+            return self._state_data_cache
         state_file = self._get_state_file_path()
         if not state_file.exists():
-            return {}
+            self._state_data_cache = {}
+            return self._state_data_cache
         try:
-            return json.loads(state_file.read_text(encoding="utf-8"))
+            self._state_data_cache = json.loads(state_file.read_text(encoding="utf-8"))
         except Exception:
-            return {}
+            self._state_data_cache = {}
+        return self._state_data_cache
 
-    def _save_state_json(self, data):
+    def _save_state_json(self, data, force=False):
+        # Fix #5: debounce flush disk xuong 1Hz
+        self._state_data_cache = data
+        now = time.time()
+        if not force and (now - self._last_state_flush_ts) < 1.0:
+            return True
+        self._last_state_flush_ts = now
         try:
             self._get_state_file_path().write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
             return True
@@ -1022,7 +1047,8 @@ class CharacterSyncWorkflow(QThread):
 
     def _cleanup_workflow_data(self):
         try:
-            self._save_state_json({})
+            self._state_data_cache = {}
+            self._save_state_json({}, force=True)
             project_dir = WORKFLOWS_DIR / str(self.project_name)
             if not project_dir.exists():
                 return
@@ -1148,8 +1174,14 @@ class CharacterSyncWorkflow(QThread):
 
         return candidates
 
+    def _get_prompts_cached(self):
+        """Fix #7: Load prompts mot lan va cache, tranh doc lai test.json moi status update."""
+        if self._prompts_cache is None:
+            self._prompts_cache = self._load_text_prompts()
+        return self._prompts_cache
+
     def _get_prompt_text(self, prompt_id):
-        for item in self._load_text_prompts():
+        for item in self._get_prompts_cached():
             if str(item.get("id")) == str(prompt_id):
                 return str(item.get("prompt") or "")
         return ""

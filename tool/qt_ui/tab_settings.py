@@ -1,4 +1,5 @@
 from __future__ import annotations
+import concurrent.futures
 import os
 import shutil
 import threading
@@ -67,9 +68,17 @@ class _AutoLoginWorker(QObject):
 class SettingsTab(QWidget):
     REQUIRED_PROJECT_URL_PREFIX = 'https://labs.google/fx/vi/tools/flow/project/'
 
+    # Signal truyen ket qua CDP fetch tu background thread ve UI thread
+    _cdp_fetch_done = pyqtSignal(str)
+
     def __init__(self, config, parent: QWidget | None = None):
         super().__init__(parent)
         self._cfg = config
+        # Executor de chay urlopen khong block UI thread
+        self._cdp_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix='cdp_fetch'
+        )
+        self._cdp_fetch_done.connect(self._on_cdp_fetch_done)
         self.setObjectName('SettingsTab')
         self.setStyleSheet("""
             QWidget#SettingsTab QComboBox#SettingsCombo {
@@ -504,54 +513,77 @@ class SettingsTab(QWidget):
             self._profile_popup.close()
 
     def _save_profile_token(self) -> None:
+        """Goi CDP qua background thread (tranh dong UI 2s vi urlopen timeout=2)."""
+        try:
+            if not (self._last_profile_cdp_host and self._last_profile_cdp_host == '127.0.0.1' and self._last_profile_cdp_port > 0):
+                return
+            host = self._last_profile_cdp_host
+            port = self._last_profile_cdp_port
+            if isinstance(self._profile_popup_status, QLabel):
+                self._profile_popup_status.setText('Trạng thái: Đang đọc URL từ Chrome...')
+
+            def _fetch_and_emit():
+                try:
+                    result = self._fetch_project_url_from_cdp(host, port)
+                except Exception:
+                    result = ''
+                # Emit qua Qt signal de chuyen ket qua ve UI thread
+                try:
+                    self._cdp_fetch_done.emit(str(result or ''))
+                except Exception:
+                    pass
+
+            try:
+                self._cdp_executor.submit(_fetch_and_emit)
+            except Exception as exc:
+                QMessageBox.critical(self, 'Lỗi', f'Không thể lưu profile token: {exc}')
+        except Exception as exc:
+            QMessageBox.critical(self, 'Lỗi', f'Không thể lưu profile token: {exc}')
+
+    def _on_cdp_fetch_done(self, project_url: str) -> None:
+        """Xu ly ket qua CDP fetch tren UI thread sau khi background xong."""
         try:
             profile_dir = self._profile_dir()
-            if self._last_profile_cdp_host and self._last_profile_cdp_host == '127.0.0.1' and self._last_profile_cdp_port > 0:
-                host = '127.0.0.1'
-                port = self._last_profile_cdp_port
-                project_url = self._fetch_project_url_from_cdp(host, port)
-                
-                if not project_url:
-                    message = 'Bạn cần đăng nhập tải khoản và tạo 1 dự án mới.'
-                    if isinstance(self._profile_popup_status, QLabel):
-                        self._profile_popup_status.setText(f'Trạng thái: {message}')
-                    QMessageBox.warning(self, 'Chưa có link project', message)
-                    return
-                    
-                if self.REQUIRED_PROJECT_URL_PREFIX not in project_url:
-                    message = "Link chưa hợp lệ. URL phải chứa 'project'."
-                    if isinstance(self._profile_popup_status, QLabel):
-                        self._profile_popup_status.setText(f'Trạng thái: {message}')
-                    QMessageBox.warning(self, 'Link chưa hợp lệ', message)
-                    return
-                    
-                from . import settings_manager
-                SettingsManager = settings_manager.SettingsManager
-                cfg = SettingsManager.load_config()
-                if not isinstance(cfg, dict):
-                    cfg = {}
-                    
-                if not isinstance(cfg.get('account1'), dict):
-                    account = {}
-                else:
-                    account = cfg.get('account1')
-                    
-                if not account:
-                    account = {}
-                    
-                account['URL_GEN_TOKEN'] = project_url
-                account['folder_user_data_get_token'] = str(profile_dir)
-                cfg['account1'] = account
-                SettingsManager.save_config(cfg)
-                
+            if not project_url:
+                message = 'Bạn cần đăng nhập tải khoản và tạo 1 dự án mới.'
                 if isinstance(self._profile_popup_status, QLabel):
-                    self._profile_popup_status.setText(f'Trạng thái: Đã lưu URL_GEN_TOKEN\n{project_url}')
-                    
-                QMessageBox.information(self, 'Lưu thành công', 'Đã lưu URL_GEN_TOKEN từ profile hiện tại. Chrome vẫn giữ mở để tránh mất dữ liệu profile.')
-                
-                if self._profile_popup:
-                    self._profile_popup.close()
-                    
+                    self._profile_popup_status.setText(f'Trạng thái: {message}')
+                QMessageBox.warning(self, 'Chưa có link project', message)
+                return
+
+            if self.REQUIRED_PROJECT_URL_PREFIX not in project_url:
+                message = "Link chưa hợp lệ. URL phải chứa 'project'."
+                if isinstance(self._profile_popup_status, QLabel):
+                    self._profile_popup_status.setText(f'Trạng thái: {message}')
+                QMessageBox.warning(self, 'Link chưa hợp lệ', message)
+                return
+
+            from . import settings_manager
+            SettingsManager = settings_manager.SettingsManager
+            cfg = SettingsManager.load_config()
+            if not isinstance(cfg, dict):
+                cfg = {}
+
+            if not isinstance(cfg.get('account1'), dict):
+                account = {}
+            else:
+                account = cfg.get('account1')
+
+            if not account:
+                account = {}
+
+            account['URL_GEN_TOKEN'] = project_url
+            account['folder_user_data_get_token'] = str(profile_dir)
+            cfg['account1'] = account
+            SettingsManager.save_config(cfg)
+
+            if isinstance(self._profile_popup_status, QLabel):
+                self._profile_popup_status.setText(f'Trạng thái: Đã lưu URL_GEN_TOKEN\n{project_url}')
+
+            QMessageBox.information(self, 'Lưu thành công', 'Đã lưu URL_GEN_TOKEN từ profile hiện tại. Chrome vẫn giữ mở để tránh mất dữ liệu profile.')
+
+            if self._profile_popup:
+                self._profile_popup.close()
         except Exception as exc:
             QMessageBox.critical(self, 'Lỗi', f'Không thể lưu profile token: {exc}')
 
@@ -651,11 +683,27 @@ class SettingsTab(QWidget):
         self._auto_login_popup.raise_()
         self._auto_login_popup.activateWindow()
 
+    _MAX_AUTO_LOGIN_LOG_BLOCKS = 2000
+
     def _append_auto_login_log(self, message: str) -> None:
         if self._auto_login_log is None:
             return
         ts = datetime.now().strftime('%H:%M:%S')
         self._auto_login_log.append(f'[{ts}] {str(message) if message else ""}')
+        # QTextEdit khong co setMaximumBlockCount – cat thu cong khi vuot qua gioi han
+        try:
+            doc = self._auto_login_log.document()
+            if doc.blockCount() > self._MAX_AUTO_LOGIN_LOG_BLOCKS:
+                cursor = self._auto_login_log.textCursor()
+                cursor.movePosition(cursor.MoveOperation.Start)
+                cursor.movePosition(
+                    cursor.MoveOperation.Down,
+                    cursor.MoveMode.KeepAnchor,
+                    doc.blockCount() - self._MAX_AUTO_LOGIN_LOG_BLOCKS,
+                )
+                cursor.removeSelectedText()
+        except Exception:
+            pass
 
     def _request_stop_auto_login(self) -> None:
         self._auto_login_stopped_by_user = True

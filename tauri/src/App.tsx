@@ -39,6 +39,9 @@ import LicenseModal from './screens/LicenseModal';
 import OnboardingModal from './screens/OnboardingModal';
 import DriveSyncModal from './screens/DriveSyncModal';
 
+// Nguon duy nhat cho version string — doc tu package.json qua vite.config.ts define
+const APP_VERSION: string = import.meta.env.VITE_APP_VERSION ?? '0.0.0';
+
 // Types
 type Page = 'home' | 'text2video' | 'image2video' | 'bulk-login' | 'queue' | 'history' | 'settings';
 
@@ -166,7 +169,7 @@ const Dashboard = () => (
         </section>
 
         <section className="bg-gradient-to-br from-blue-600/20 to-[#1F1F1F] border border-[#404040] rounded-xl p-6 min-h-[160px] flex flex-col justify-end">
-          <span className="text-[10px] font-mono text-blue-400 mb-1">v6.0.1</span>
+          <span className="text-[10px] font-mono text-blue-400 mb-1">v{APP_VERSION}</span>
           <h3 className="text-lg font-bold text-white tracking-tight">Engine Ready</h3>
         </section>
       </div>
@@ -471,7 +474,7 @@ const SettingsPage = () => (
             <div>
               <p className="text-[9px] text-[#707070] uppercase font-bold tracking-widest mb-1.5">Bản quyền</p>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-white bg-[#3A3A3A] px-2 py-1 rounded border border-[#404040]">v5.0.3 Comm</span>
+                <span className="text-[10px] font-mono text-white bg-[#3A3A3A] px-2 py-1 rounded border border-[#404040]">v{APP_VERSION} Comm</span>
                 <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Active</span>
               </div>
             </div>
@@ -674,7 +677,11 @@ export default function App() {
             >
               {currentPage === 'home' && <Dashboard />}
               {currentPage === 'text2video' && <TextToVideo />}
-              {currentPage === 'image2video' && <TextToVideo />}
+              {currentPage === 'image2video' && (
+                <div className="flex items-center justify-center h-64 text-[#A0A0A0] text-sm">
+                  Image-to-Video coming soon
+                </div>
+              )}
               {currentPage === 'bulk-login' && <BulkLogin />}
               {currentPage === 'queue' && <QueuePage />}
               {currentPage === 'history' && <HistoryPage />}
@@ -686,7 +693,7 @@ export default function App() {
         {/* Footer info bar */}
         <footer className="h-8 border-t border-[#404040] bg-[#1c2026] flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] font-mono text-[#707070] uppercase tracking-widest">
-            VEO Pipeline Pro v6.0.1 | System Status: <span className="text-emerald-500 font-bold">Operational</span>
+            VEO Pipeline Pro v{APP_VERSION} | System Status: <span className="text-emerald-500 font-bold">Operational</span>
           </div>
           <div className="flex gap-6 text-[10px] font-mono text-[#707070] uppercase tracking-widest">
             <button className="hover:text-blue-400 transition-colors">Support</button>

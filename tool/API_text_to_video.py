@@ -42,7 +42,7 @@ def _resolve_type_account():
 
 def _load_account_context():
     account_type = _resolve_type_account()
-    SettingsManager.load_config()  # giữ tương thích, dù hiện tại không cần giá trị khác
+    SettingsManager.load_config()  # giu tuong thich, du hien tai khong can gia tri khac
 
     if account_type == "NORMAL":
         return {
@@ -59,6 +59,7 @@ def _load_account_context():
             "video_model_key_portrait": DEFAULT_VIDEO_MODEL_KEY_PORTRAIT_NORMAL,
             "user_paygate_tier": "PAYGATE_TIER_ONE",
         }
+
     if account_type == "ULTRA":
         return {
             "type_account": "ULTRA",
@@ -66,6 +67,14 @@ def _load_account_context():
             "video_model_key_portrait": DEFAULT_VIDEO_MODEL_KEY_PORTRAIT_ULTRA,
             "user_paygate_tier": "PAYGATE_TIER_TWO",
         }
+
+    # Fix #2: fallback ULTRA de tranh crash khi account_type la gia tri la
+    return {
+        "type_account": "ULTRA",
+        "video_model_key_landscape": DEFAULT_VIDEO_MODEL_KEY_ULTRA,
+        "video_model_key_portrait": DEFAULT_VIDEO_MODEL_KEY_PORTRAIT_ULTRA,
+        "user_paygate_tier": "PAYGATE_TIER_TWO",
+    }
 
 
 # Các biến dưới sẽ được refresh khi import và trước mỗi lần build payload
@@ -170,7 +179,14 @@ def build_create_payload(
         request_item["videoModelKey"] = _select_model_key(request_item.get("aspectRatio"))
 
     count = output_count if isinstance(output_count, int) and output_count > 0 else 1
-    payload["requests"] = [request_item.copy() for _ in range(count)]
+    # Fix #1: deep copy + gan sceneId doc lap cho tung output, tranh tat ca share chung metadata ref
+    import uuid as _uuid
+    requests_list = []
+    for _ in range(count):
+        copied = json.loads(json.dumps(request_item))
+        copied.setdefault("metadata", {})["sceneId"] = str(_uuid.uuid4())
+        requests_list.append(copied)
+    payload["requests"] = requests_list
     return payload
 
 
@@ -184,7 +200,7 @@ def _send_request_with_token(url, payload, token, method="POST", cookie=None):
         headers["Cookie"] = cookie
     req = urllib.request.Request(url=url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=90) as resp:
             body = resp.read().decode("utf-8", errors="replace")
             return {
                 "ok": True,
