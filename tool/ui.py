@@ -32,6 +32,7 @@ from tab_character_sync import CharacterSyncTab
 from tab_create_image import CreateImageTab
 from tab_create_image import CreateImageFromPromptTab
 from tab_idea_to_video import IdeaToVideoTab
+from tab_eng_auto import EngAutoTab
 from popup_theme import install_messagebox_theme
 from tab_settings import SettingsTab
 from tab_grok_settings import GrokSettingsTab
@@ -702,11 +703,13 @@ class MainWindow(QMainWindow):
             on_model_changed=self._on_create_image_model_changed,
         )
         self.tab_idea = IdeaToVideoTab(config)
+        self.tab_eng_auto = EngAutoTab()
         self.tab_settings = SettingsTab(config)
 
         self.tabs.addTab(self.tab_text, icon(""), "Text to Video")
         self.tabs.addTab(self.tab_image, icon(""), "Image to Video")
         self.tabs.addTab(self.tab_idea, icon(""), "Ý tưởng to Video")
+        self.tabs.addTab(self.tab_eng_auto, icon(""), "📚 Auto English")
         self.tabs.addTab(self.tab_char_sync, icon(""), "Video Đồng Nhất")
         self.tabs.addTab(self.tab_create_image, icon(""), "Tạo Ảnh")
         self.tabs.addTab(self.tab_settings, icon(""), "Cài đặt")
