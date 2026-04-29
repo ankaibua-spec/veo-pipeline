@@ -912,7 +912,27 @@ class MainWindow(QMainWindow):
         # Reduce horizontal size by ~15%.
         self.resize(1296, 805)
 
+        # Menu bar — Tools > Login Backup
+        try:
+            from PyQt6.QtGui import QAction
+            mb = self.menuBar()
+            tools_menu = mb.addMenu("Tools")
+            act_auth = QAction("Login Backup (Export/Import)", self)
+            act_auth.setToolTip("Export or import Google login state as portable JSON")
+            act_auth.triggered.connect(self._open_auth_dialog)
+            tools_menu.addAction(act_auth)
+        except Exception:
+            pass
+
         self._on_main_tab_changed()
+
+    def _open_auth_dialog(self):
+        try:
+            from qt_ui_modern.auth_dialog import AuthDialog
+            AuthDialog(self).exec()
+        except Exception as e:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", str(e))
 
     def _active_leaf_tab(self):
         try:

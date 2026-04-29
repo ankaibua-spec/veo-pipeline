@@ -55,6 +55,8 @@ a = Analysis(
         "qt_ui_modern.tray",
         "qt_ui_modern.auto_update",
         "qt_ui_modern.bulk_login",
+        "qt_ui_modern.auth_dialog",
+        "auth_export",
         "qt_ui_modern.drive_sync",
         "qt_ui_modern.drive_settings",
         # Google Drive deps

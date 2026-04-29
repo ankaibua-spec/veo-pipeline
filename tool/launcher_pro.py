@@ -29,6 +29,7 @@ def main():
     from qt_ui_modern.onboarding import needs_onboarding, mark_onboarded, OnboardingWizard
     from qt_ui_modern.tray import install_tray
     from qt_ui_modern.bulk_login import BulkLoginDialog
+    from qt_ui_modern.auth_dialog import AuthDialog
     # Use original top-level ui.py (real source). qt_ui/ subfolder contains
     # decompiled bytecode disassembly, not valid Python — avoid.
     from ui import MainWindow, AppConfig
@@ -139,6 +140,11 @@ def main():
         bulk_btn.setObjectName("Accent")
         bulk_btn.clicked.connect(lambda: BulkLoginDialog(win).exec())
         chrome_layout.addWidget(bulk_btn)
+
+        auth_btn = QPushButton("Login Backup")
+        auth_btn.setToolTip("Export / Import Google login state (portable JSON)")
+        auth_btn.clicked.connect(lambda: AuthDialog(win).exec())
+        chrome_layout.addWidget(auth_btn)
 
         drive_btn = QPushButton("☁ Drive Sync")
         drive_btn.clicked.connect(lambda: DriveSettingsDialog(win).exec())
