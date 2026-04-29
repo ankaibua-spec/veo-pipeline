@@ -250,8 +250,22 @@ class SettingsTab(QWidget):
         self.gemini_api_keys = QPlainTextEdit()
         self.gemini_api_keys.setPlainText(str(getattr(config, "gemini_api_keys", "") or ""))
         self.gemini_api_keys.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.gemini_api_keys.setFixedHeight(150)
+        self.gemini_api_keys.setFixedHeight(120)
         right.addWidget(self.gemini_api_keys)
+
+        openai_title = QLabel(
+            "OpenAI API Keys (fallback, mỗi dòng 1 key, prefix sk-...):\n"
+            "Dùng khi Gemini key hết quota hoặc thiếu. Model gpt-4o-mini."
+        )
+        openai_title.setStyleSheet("QLabel{font-weight:800;}")
+        openai_title.setWordWrap(True)
+        right.addWidget(openai_title)
+
+        self.openai_api_keys = QPlainTextEdit()
+        self.openai_api_keys.setPlainText(str(getattr(config, "openai_api_keys", "") or ""))
+        self.openai_api_keys.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.openai_api_keys.setFixedHeight(100)
+        right.addWidget(self.openai_api_keys)
 
         self.btn_auto_login = QPushButton("AUTO Login TK Veo3")
         self.btn_auto_login.setObjectName("Orange")
@@ -341,6 +355,7 @@ class SettingsTab(QWidget):
         setattr(self._cfg, "veo3_user", self.veo3_user.text().strip())
         setattr(self._cfg, "veo3_pass", self.veo3_pass.text())
         setattr(self._cfg, "gemini_api_keys", self.gemini_api_keys.toPlainText().strip())
+        setattr(self._cfg, "openai_api_keys", self.openai_api_keys.toPlainText().strip())
         try:
             self._cfg.save()
             QMessageBox.information(self, "Thông báo", "Cấu hình đã được lưu.")

@@ -18,18 +18,75 @@ except Exception:
     genai = None
 
 
-def load_api_keys():
-    """Load tất cả API keys từ data_general/gemini_api_key.txt (mỗi dòng 1 key)."""
-    primary_file = DATA_GENERAL_DIR / "gemini_api_key.txt"
-    legacy_file = DATA_GENERAL_DIR / "gemini_API" / "gemini_api.txt"
+def _read_keys_file(path) -> list:
+    if not path.exists():
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f.readlines() if line.strip()]
 
-    for api_key_file in (primary_file, legacy_file):
-        if api_key_file.exists():
-            with open(api_key_file, 'r', encoding='utf-8') as f:
-                keys = [line.strip() for line in f.readlines() if line.strip()]
-                if keys:
-                    return keys
-    return []
+
+def load_api_keys():
+    """Load API keys: Gemini first, then OpenAI fallback.
+
+    Files (mỗi dòng 1 key):
+    - data_general/gemini_api_key.txt (Gemini, free 1500/day/key)
+    - data_general/gemini_API/gemini_api.txt (legacy)
+    - data_general/openai_api_key.txt (OpenAI, paid, fallback)
+
+    Returns: list[str]. Mixed Gemini + OpenAI OK.
+    Provider auto-detected at call time by key prefix ("sk-" = OpenAI).
+    """
+    keys = []
+    keys.extend(_read_keys_file(DATA_GENERAL_DIR / "gemini_api_key.txt"))
+    if not keys:
+        keys.extend(_read_keys_file(DATA_GENERAL_DIR / "gemini_API" / "gemini_api.txt"))
+    keys.extend(_read_keys_file(DATA_GENERAL_DIR / "openai_api_key.txt"))
+    return keys
+
+
+def _is_openai_key(key: str) -> bool:
+    return isinstance(key, str) and key.startswith("sk-")
+
+
+def _call_openai_chat(api_key: str, prompt_text: str, timeout: int = 120) -> str | None:
+    """Call OpenAI Chat Completions API. Model gpt-4o-mini.
+    Returns response text or None.
+    """
+    import json as _json
+    import urllib.request
+    import urllib.error
+
+    url = "https://api.openai.com/v1/chat/completions"
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt_text}],
+        "temperature": 0.9,
+    }
+    data = _json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=data, method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = r.read().decode("utf-8")
+        d = _json.loads(body)
+        choices = d.get("choices", [])
+        if choices:
+            msg = choices[0].get("message", {})
+            return msg.get("content") or None
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode("utf-8")
+        except Exception:
+            err_body = str(e)
+        raise RuntimeError(f"OpenAI HTTP {e.code}: {err_body[:200]}")
+    except Exception as e:
+        raise RuntimeError(f"OpenAI error: {e}")
+    return None
 
 
 def _show_api_key_error(message):
@@ -176,10 +233,6 @@ def call_gemini_with_retry(prompt_text, api_keys, current_key_index=0, log_callb
     def should_stop():
         return bool(stop_check and stop_check())
 
-    if genai is None:
-        log("❌ Thiếu thư viện Gemini. Cài đặt: pip install google-genai")
-        return None, current_key_index
-
     # ✅ RESET INDEX NẾU VẬT QUÁ SỐ API KEY CÓ SẢN
     if current_key_index >= len(api_keys):
         log(f"⚠️ API key index vượt quá ({current_key_index} >= {len(api_keys)}) - reset về key #0")
@@ -190,53 +243,75 @@ def call_gemini_with_retry(prompt_text, api_keys, current_key_index=0, log_callb
 
     for attempt in range(max_retries):
         if should_stop():
-            log("⏹️ Đã dừng trong lúc gọi Gemini")
+            log("⏹️ Đã dừng trong lúc gọi LLM")
             return None, current_key_index
         if current_key_index >= len(api_keys):
             log(f"❌ Hết lượt API - không còn API key nào cả!")
             return None, current_key_index
 
         api_key = api_keys[current_key_index]
-        api_display = f"API #{current_key_index + 1}/{len(api_keys)}"
+        provider = "OpenAI" if _is_openai_key(api_key) else "Gemini"
+        api_display = f"{provider} API #{current_key_index + 1}/{len(api_keys)}"
         log(f"🔑 Đang dùng {api_display}...")
 
         if should_stop():
-            log("⏹️ Đã dừng trước khi gửi request Gemini")
+            log("⏹️ Đã dừng trước khi gửi request")
             return None, current_key_index
 
-        use_client_api = hasattr(genai, "Client")
-        if use_client_api:
-            client = genai.Client(api_key=api_key)
-
         try:
-            if use_client_api:
+            response_text = None
+
+            if _is_openai_key(api_key):
+                # OpenAI path
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash-lite",
-                        contents=prompt_text,
-                        request_options={"timeout": request_timeout_sec}
+                    response_text = _call_openai_chat(
+                        api_key, prompt_text, timeout=request_timeout_sec
                     )
-                except TypeError:
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash-lite",
-                        contents=prompt_text
-                    )
+                except Exception as e:
+                    log(f"⚠️ OpenAI lỗi: {e} — thử API tiếp...")
+                    current_key_index += 1
+                    save_current_api_key_index(current_key_index, project_dir)
+                    continue
             else:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-2.5-flash-lite")
-                try:
-                    response = model.generate_content(
-                        prompt_text,
-                        request_options={"timeout": request_timeout_sec}
-                    )
-                except TypeError:
-                    response = model.generate_content(prompt_text)
+                # Gemini path
+                if genai is None:
+                    log("❌ Thiếu thư viện Gemini. Cài: pip install google-genai")
+                    current_key_index += 1
+                    save_current_api_key_index(current_key_index, project_dir)
+                    continue
+
+                use_client_api = hasattr(genai, "Client")
+                if use_client_api:
+                    client = genai.Client(api_key=api_key)
+                    try:
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash-lite",
+                            contents=prompt_text,
+                            request_options={"timeout": request_timeout_sec}
+                        )
+                    except TypeError:
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash-lite",
+                            contents=prompt_text
+                        )
+                else:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+                    try:
+                        response = model.generate_content(
+                            prompt_text,
+                            request_options={"timeout": request_timeout_sec}
+                        )
+                    except TypeError:
+                        response = model.generate_content(prompt_text)
+
+                response_text = (response.text if response else None)
 
             if should_stop():
-                log("⏹️ Đã dừng sau khi nhận response Gemini")
+                log(f"⏹️ Đã dừng sau khi nhận response {provider}")
                 return None, current_key_index
 
-            if not response or not response.text:
+            if not response_text:
                 log(f"⚠️ Response rỗng từ {api_display} - thử API tiếp theo...")
                 current_key_index += 1
                 save_current_api_key_index(current_key_index, project_dir)
@@ -244,7 +319,7 @@ def call_gemini_with_retry(prompt_text, api_keys, current_key_index=0, log_callb
 
             log(f"✅ {api_display} thành công!")
             save_current_api_key_index(current_key_index, project_dir)
-            return response.text, current_key_index
+            return response_text, current_key_index
 
         except Exception as e:
             error_str = str(e)
@@ -1775,15 +1850,19 @@ def idea_to_video_workflow(
         style = str(style or "3d_Pixar")
         language = str(language or "Tiếng Việt (vi-VN)")
 
-        api_key_file = DATA_GENERAL_DIR / "gemini_api_key.txt"
-        legacy_api_key_file = DATA_GENERAL_DIR / "gemini_API" / "gemini_api.txt"
+        gemini_file = DATA_GENERAL_DIR / "gemini_api_key.txt"
+        legacy_gemini_file = DATA_GENERAL_DIR / "gemini_API" / "gemini_api.txt"
+        openai_file = DATA_GENERAL_DIR / "openai_api_key.txt"
         api_keys = load_api_keys()
-        if (not api_key_file.exists()) and (not legacy_api_key_file.exists()):
-            msg = "❌ Không tìm thấy file API: data_general/gemini_api_key.txt"
+        if not (gemini_file.exists() or legacy_gemini_file.exists() or openai_file.exists()):
+            msg = ("❌ Không tìm thấy file API. Cần ÍT NHẤT 1 trong:\n"
+                   "  - data_general/gemini_api_key.txt (free 1500/ngày/key)\n"
+                   "  - data_general/openai_api_key.txt (paid, sk-... key)\n"
+                   "Vào tab Cài đặt → paste key → Save.")
             _show_api_key_error(msg)
             return {"success": False, "message": msg}
         if not api_keys:
-            msg = "❌ Không có API key nào cần thêm API key vào trong phần cài đặt và lưu lại rồi chạy lại"
+            msg = "❌ Không có API key nào. Vào tab Cài đặt → paste key → Save → chạy lại"
             _show_api_key_error(msg)
             return {"success": False, "message": msg}
         

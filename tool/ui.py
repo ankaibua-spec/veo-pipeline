@@ -45,6 +45,7 @@ _APP_ROOT = str(BASE_DIR)
 DATA_GENERAL_DIR = os.path.join(_APP_ROOT, "data_general")
 CONFIG_PATH = os.path.join(DATA_GENERAL_DIR, "config.json")
 GEMINI_KEYS_PATH = os.path.join(DATA_GENERAL_DIR, "gemini_api_key.txt")
+OPENAI_KEYS_PATH = os.path.join(DATA_GENERAL_DIR, "openai_api_key.txt")
 OLD_CONFIG_PATH = os.path.join(_APP_ROOT, "config.json")
 DEFAULT_DOWNLOAD_DIR = os.path.join(_APP_ROOT, "downloads")
 
@@ -144,6 +145,8 @@ class AppConfig:
 
     # Gemini API keys (one per line)
     gemini_api_keys: str = ""
+    # OpenAI API keys (fallback, one per line, prefix sk-...)
+    openai_api_keys: str = ""
 
     # GROK account settings
     grok_user: str = ""
@@ -236,6 +239,20 @@ class AppConfig:
                             cfg.gemini_api_keys = "\n".join([str(x) for x in gem if str(x).strip()])
                         else:
                             cfg.gemini_api_keys = str(gem or "")
+                except Exception:
+                    pass
+
+                # OpenAI keys: text file (fallback for prompt gen)
+                try:
+                    if os.path.isfile(OPENAI_KEYS_PATH):
+                        with open(OPENAI_KEYS_PATH, "r", encoding="utf-8") as kf:
+                            cfg.openai_api_keys = "\n".join([ln.strip() for ln in kf.read().splitlines() if ln.strip()])
+                    else:
+                        oai = data.get("OPENAI_API_KEYS", "")
+                        if isinstance(oai, list):
+                            cfg.openai_api_keys = "\n".join([str(x) for x in oai if str(x).strip()])
+                        else:
+                            cfg.openai_api_keys = str(oai or "")
                 except Exception:
                     pass
 
@@ -353,6 +370,7 @@ class AppConfig:
         grok_account["TYPE_ACCOUNT"] = grok_account_type
 
         gem_lines = [ln.strip() for ln in str(self.gemini_api_keys or "").splitlines() if ln.strip()]
+        oai_lines = [ln.strip() for ln in str(getattr(self, "openai_api_keys", "") or "").splitlines() if ln.strip()]
 
         # Only persist the required keys.
         data = {
@@ -396,6 +414,15 @@ class AppConfig:
             with open(GEMINI_KEYS_PATH, "w", encoding="utf-8") as kf:
                 kf.write("\n".join(gem_lines))
                 if gem_lines:
+                    kf.write("\n")
+        except Exception:
+            pass
+
+        # Persist OpenAI keys to text file (one key per line).
+        try:
+            with open(OPENAI_KEYS_PATH, "w", encoding="utf-8") as kf:
+                kf.write("\n".join(oai_lines))
+                if oai_lines:
                     kf.write("\n")
         except Exception:
             pass
