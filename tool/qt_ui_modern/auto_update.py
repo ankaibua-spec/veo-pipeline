@@ -214,21 +214,22 @@ def apply_update(zip_path: Path):
     backup_dir = Path(str(target_dir) + "_backup")
     exit_marker = work_dir / "exit_marker"   # current process touches before _exit
 
-    # Validate every path that lands in the swap script. Defence against unexpected
-    # username/temp-dir edge cases. shlex.quote isn't valid for cmd.exe; we keep
-    # paths in a side-car file and let the script read them as data.
-    paths_file = work_dir / "paths.txt"
-    paths_file.write_text(
-        "\n".join([
-            _validate_path(target_dir,  "target_dir"),
-            _validate_path(backup_dir,  "backup_dir"),
-            _validate_path(extract_dir, "extract_dir"),
-            _validate_path(exe_path,    "exe_path"),
-            _validate_path(work_dir,    "work_dir"),
-            _validate_path(exit_marker, "exit_marker"),
-        ]),
-        encoding="utf-8",
-    )
+    # Validate every path that lands in the swap script. Each path goes to its
+    # own single-line ASCII file — `set /p VAR=<"file"` is the simplest possible
+    # cmd.exe read primitive and avoids quirky `for /f` parsing.
+    p_target  = _validate_path(target_dir,  "target_dir")
+    p_backup  = _validate_path(backup_dir,  "backup_dir")
+    p_extract = _validate_path(extract_dir, "extract_dir")
+    p_exepath = _validate_path(exe_path,    "exe_path")
+    p_workdir = _validate_path(work_dir,    "work_dir")
+    p_exitflg = _validate_path(exit_marker, "exit_marker")
+
+    p1 = work_dir / "p_target.txt";  p1.write_text(p_target,  encoding="ascii")
+    p2 = work_dir / "p_backup.txt";  p2.write_text(p_backup,  encoding="ascii")
+    p3 = work_dir / "p_extract.txt"; p3.write_text(p_extract, encoding="ascii")
+    p4 = work_dir / "p_exepath.txt"; p4.write_text(p_exepath, encoding="ascii")
+    p5 = work_dir / "p_workdir.txt"; p5.write_text(p_workdir, encoding="ascii")
+    p6 = work_dir / "p_exitflg.txt"; p6.write_text(p_exitflg, encoding="ascii")
 
     # Bat lives OUTSIDE work_dir so the bat itself doesn't lock the dir we
     # want to clean up. Self-delete via `del "%~f0"` still works.
@@ -244,16 +245,18 @@ def apply_update(zip_path: Path):
         "set \"LOGFILE=" + str(log_path) + "\"\r\n"
         "echo [%date% %time%] swap.bat started > \"!LOGFILE!\"\r\n"
         "\r\n"
-        "REM Read paths written by the updater (one per line).\r\n"
-        "set /p TARGET=<\"" + str(paths_file) + "\"\r\n"
-        "for /f \"usebackq skip=1 delims=\" %%I in (\"" + str(paths_file) + "\") do (\r\n"
-        "  if not defined BACKUP   ( set \"BACKUP=%%I\"   ) else (\r\n"
-        "  if not defined EXTRACT  ( set \"EXTRACT=%%I\"  ) else (\r\n"
-        "  if not defined EXEPATH  ( set \"EXEPATH=%%I\"  ) else (\r\n"
-        "  if not defined WORKDIR  ( set \"WORKDIR=%%I\"  ) else (\r\n"
-        "  if not defined EXITFLAG ( set \"EXITFLAG=%%I\" )))))\r\n"
-        ")\r\n"
-        "echo TARGET=!TARGET!  EXEPATH=!EXEPATH! >> \"!LOGFILE!\"\r\n"
+        "REM Each path in its own file — simplest cmd.exe read primitive.\r\n"
+        "set /p TARGET=<\"" + str(p1) + "\"\r\n"
+        "set /p BACKUP=<\"" + str(p2) + "\"\r\n"
+        "set /p EXTRACT=<\"" + str(p3) + "\"\r\n"
+        "set /p EXEPATH=<\"" + str(p4) + "\"\r\n"
+        "set /p WORKDIR=<\"" + str(p5) + "\"\r\n"
+        "set /p EXITFLAG=<\"" + str(p6) + "\"\r\n"
+        "echo [%date% %time%] paths loaded >> \"!LOGFILE!\"\r\n"
+        "echo TARGET=!TARGET! >> \"!LOGFILE!\"\r\n"
+        "echo EXEPATH=!EXEPATH! >> \"!LOGFILE!\"\r\n"
+        "echo EXTRACT=!EXTRACT! >> \"!LOGFILE!\"\r\n"
+        "echo EXITFLAG=!EXITFLAG! >> \"!LOGFILE!\"\r\n"
         "\r\n"
         "REM Wait for the running app to drop the exit-marker file (max 60s).\r\n"
         "set /a counter=0\r\n"
