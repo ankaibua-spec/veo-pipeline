@@ -14,10 +14,18 @@ import hashlib
 import time
 from pathlib import Path
 
-from settings_manager import DATA_GENERAL_DIR, WORKFLOWS_DIR
+from settings_manager import DATA_GENERAL_DIR, WORKFLOWS_DIR, BUNDLE_DIR
 from idea_to_video import idea_to_video_workflow
 
-POOL_PATH = DATA_GENERAL_DIR / "eng_lesson_pool.json"
+
+def _resolve_pool_path() -> Path:
+    bundled = BUNDLE_DIR / "data_general" / "eng_lesson_pool.json"
+    if bundled.exists():
+        return bundled
+    return DATA_GENERAL_DIR / "eng_lesson_pool.json"
+
+
+POOL_PATH = _resolve_pool_path()
 
 
 def load_pool() -> dict:
