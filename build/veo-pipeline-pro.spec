@@ -18,6 +18,7 @@ a = Analysis(
     datas=[
         (str(TOOL_DIR / "qt_ui_modern"), "qt_ui_modern"),
         (str(TOOL_DIR / "qt_ui"), "qt_ui"),
+        (str(TOOL_DIR / "data_general" / "eng_lesson_pool.json"), "data_general"),
     ],
     excludes=[
         # Trim unused stdlib + deps
@@ -62,10 +63,12 @@ a = Analysis(
         "tab_text_to_video",
         "tab_image_to_video",
         "tab_idea_to_video",
+        "tab_eng_auto",
         "tab_character_sync",
         "tab_create_image",
         "tab_grok_settings",
         "tab_settings",
+        "eng_auto_prompt",
         "status_panel",
         "branding_config",
         "settings_manager",
