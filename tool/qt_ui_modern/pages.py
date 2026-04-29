@@ -431,6 +431,55 @@ class HistoryPage(QWidget):
         return QSize(160, 280)
 
 
+# ============ Auto English Lessons ============
+class EngAutoPage(QWidget):
+    """Mockup host for EngAutoTab (used when legacy tab fails to load)."""
+
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
+
+        c = card(
+            "Auto English Lessons",
+            "Generate N English teaching prompts automatically. "
+            "Pick level + topic + count, then click Generate.",
+        )
+        cl = c.layout()
+
+        row = QHBoxLayout()
+        row.setSpacing(16)
+        row.addLayout(field("Level", combo(["A1 Beginner", "A2 Elementary", "B1 Intermediate"])))
+        row.addLayout(field("Topic", combo(["All topics (random)", "Ordering food", "Job interview", "Doctor visit"])))
+        row.addLayout(field("Count", spin(1, 50, 5)))
+        cl.addLayout(row)
+        layout.addWidget(c)
+
+        info = card("How it works")
+        il = info.layout()
+        steps = QLabel(
+            "1. Select level(s) + topic\n"
+            "2. Enter number of lessons\n"
+            "3. Click Generate — prompts are built using Gemini (same as Idea→Video)\n"
+            "4. Prompts auto-appended to tab Text→Video\n"
+            "5. Switch to Text→Video and click Render"
+        )
+        steps.setStyleSheet(f"color:{t.TEXT_SECONDARY}; font-size:13px; line-height:1.6;")
+        il.addWidget(steps)
+        layout.addWidget(info)
+
+        cta = QHBoxLayout()
+        cta.addStretch()
+        b = QPushButton("Generate")
+        b.setObjectName("accent")
+        b.setMinimumHeight(44)
+        b.setMinimumWidth(200)
+        cta.addWidget(b)
+        layout.addLayout(cta)
+        layout.addStretch()
+
+
 # ============ Settings ============
 class SettingsPage(QWidget):
     def __init__(self):

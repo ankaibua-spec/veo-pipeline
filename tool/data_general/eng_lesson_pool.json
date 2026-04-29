@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "levels": [
+    {"code": "A1", "label": "Beginner", "vocab_hint": "300-600 most common words",
+     "grammar_hint": "present simple, basic to-be, imperatives"},
+    {"code": "A2", "label": "Elementary", "vocab_hint": "600-1200 words",
+     "grammar_hint": "past simple, present continuous, future will"},
+    {"code": "B1", "label": "Intermediate", "vocab_hint": "1500-2500 words",
+     "grammar_hint": "present perfect, conditionals, modals"}
+  ],
+  "topics": [
+    {"id":"food","label":"Ordering food","vocab":["menu","waiter","bill","ordering","main course"]},
+    {"id":"directions","label":"Asking directions","vocab":["turn left","straight","block","corner"]},
+    {"id":"shopping","label":"Shopping for clothes","vocab":["size","fit","try on","discount","cashier"]},
+    {"id":"interview","label":"Job interview","vocab":["experience","skills","salary","position","resume"]},
+    {"id":"airport","label":"At the airport","vocab":["boarding pass","gate","luggage","delay"]},
+    {"id":"doctor","label":"Doctor visit","vocab":["symptoms","prescription","appointment","feel"]},
+    {"id":"phone","label":"Phone conversation","vocab":["leave message","hold on","call back"]},
+    {"id":"weather","label":"Weather small talk","vocab":["forecast","humid","freezing","drizzle"]},
+    {"id":"hotel","label":"Hotel check-in","vocab":["reservation","key card","wi-fi","check-out"]},
+    {"id":"appearance","label":"Describing appearance","vocab":["tall","curly","wearing","looks like"]},
+    {"id":"routine","label":"Daily routine","vocab":["wake up","commute","lunch break","go to bed"]},
+    {"id":"help","label":"Asking help politely","vocab":["could you","would you mind","excuse me"]}
+  ],
+  "scenarios": [
+    {"id":"classroom","label":"Classroom dialog teacher-student","lighting":"natural daylight"},
+    {"id":"street","label":"Two strangers on street","lighting":"outdoor mid-day"},
+    {"id":"office","label":"Office co-workers chat","lighting":"fluorescent indoor"},
+    {"id":"cafe","label":"Friends at cafe","lighting":"warm interior"},
+    {"id":"phone_setup","label":"Phone call split-screen","lighting":"two locations"},
+    {"id":"shop","label":"Customer and shopkeeper","lighting":"shop interior"},
+    {"id":"park","label":"Park bench dialog","lighting":"golden hour"},
+    {"id":"library","label":"Library whisper dialog","lighting":"soft warm"}
+  ],
+  "character_archetypes": [
+    {"id":"young_male_teacher","desc":"Young male English teacher, 28, glasses, friendly tone"},
+    {"id":"elderly_female_shop","desc":"Elderly female shopkeeper, 62, warm smile, apron"},
+    {"id":"teen_student_girl","desc":"Teenage student girl, 16, ponytail, curious eyes"},
+    {"id":"businessman_30s","desc":"Businessman, 35, suit, slightly hurried"},
+    {"id":"tourist_couple","desc":"Tourist couple, mid-20s, backpacks, holding map"},
+    {"id":"barista_24","desc":"Cafe barista, 24, apron, cheerful tone"},
+    {"id":"doctor_female","desc":"Female doctor, 40, white coat, calm voice"},
+    {"id":"child_8yo","desc":"Child, 8, hoodie, energetic and inquisitive"}
+  ],
+  "camera_styles": [
+    "Medium two-shot, eye-level, soft daylight",
+    "Over-the-shoulder cuts, shallow depth of field",
+    "Static wide shot, warm interior light",
+    "Handheld walk-and-talk, natural light",
+    "Close-up on speaker, tight framing, cinematic"
+  ]
+}

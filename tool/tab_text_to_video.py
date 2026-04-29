@@ -191,3 +191,23 @@ class TextToVideoTab(QWidget):
         raw = self.editor.toPlainText() or ""
         lines = [ln.strip() for ln in raw.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
         return [ln for ln in lines if ln]
+
+    def append_prompts(self, prompts: list[str]) -> None:
+        """Append prompts from another tab (e.g. Eng Auto). One prompt per line.
+
+        Preserves existing content; new prompts added at the end.
+        """
+        if not prompts:
+            return
+        clean = [p.strip() for p in prompts if p.strip()]
+        if not clean:
+            return
+        cur = self.editor.toPlainText() or ""
+        if cur and not cur.endswith("\n"):
+            cur += "\n"
+        cur += "\n".join(clean) + "\n"
+        self.editor.setPlainText(cur)
+        # Move cursor to end so user sees new content
+        cursor = self.editor.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.editor.setTextCursor(cursor)

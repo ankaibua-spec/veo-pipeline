@@ -62,6 +62,7 @@ NAV_ITEMS = [
     ("text2video", "Text → Video", "film"),
     ("image2video", "Image → Video", "image"),
     ("idea2video", "Idea → Video", "sparkles"),
+    ("eng_auto", "Auto English", "book"),
     ("character", "Character Sync", "user"),
     ("create_image", "Create Image", "palette"),
     ("grok", "Grok Video", "robot"),

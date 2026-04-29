@@ -30,6 +30,7 @@ LEGACY_TABS = {
     "text2video":   ("tab_text_to_video",   "TextToVideoTab",   ()),
     "image2video":  ("tab_image_to_video",  "ImageToVideoTab",  ()),
     "idea2video":   ("tab_idea_to_video",   "IdeaToVideoTab",   ("config",)),
+    "eng_auto":     ("tab_eng_auto",        "EngAutoTab",       ()),
     "character":    ("tab_character_sync",  "CharacterSyncTab", ()),
     "create_image": ("tab_create_image",    "CreateImageTab",   ()),
     "grok":         ("tab_grok_settings",   "GrokSettingsTab",  ()),
@@ -309,6 +310,7 @@ class MainWindow(QMainWindow):
         "text2video": ("Text → Video", "Generate Veo3 video from text prompt"),
         "image2video": ("Image → Video", "Animate image into video"),
         "idea2video": ("Idea → Video", "Auto-script + storyboard from idea"),
+        "eng_auto": ("Auto English Lessons", "Generate N English teaching prompts automatically"),
         "character": ("Character Sync", "Consistent character across scenes"),
         "create_image": ("Create Image", "Image generation"),
         "grok": ("Grok Video", "X.AI Grok video gen"),
@@ -402,9 +404,11 @@ class MainWindow(QMainWindow):
         from .pages import (
             Image2VideoPage, Idea2VideoPage, CharacterPage,
             CreateImagePage, GrokPage, QueuePage, HistoryPage, SettingsPage,
+            EngAutoPage,
         )
         m = {
             "image2video": Image2VideoPage, "idea2video": Idea2VideoPage,
+            "eng_auto": EngAutoPage,
             "character": CharacterPage, "create_image": CreateImagePage,
             "grok": GrokPage, "queue": QueuePage, "history": HistoryPage,
             "settings": SettingsPage,
@@ -423,6 +427,30 @@ class MainWindow(QMainWindow):
         from .bulk_login import BulkLoginDialog
         dlg = BulkLoginDialog(self)
         dlg.exec()
+
+
+def push_to_text_to_video(prompts: list) -> bool:
+    """Find the live TextToVideoTab instance and append prompts to it.
+
+    Called from tab_eng_auto._push_to_text_to_video() as a fallback path
+    when the tab widget is nested inside a QScrollArea wrapper.
+
+    Returns True if found and appended successfully.
+    """
+    try:
+        app = QApplication.instance()
+        if app is None:
+            return False
+        for w in app.allWidgets():
+            if w.__class__.__name__ == "TextToVideoTab":
+                try:
+                    w.append_prompts(prompts)
+                    return True
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return False
 
 
 def run():
